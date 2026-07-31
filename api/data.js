@@ -1,15 +1,22 @@
 // Fonction serverless Vercel : lecture/écriture d'un document JSON par utilisateur.
-// Le « document » est stocké dans Upstash Redis (Vercel KV) sous une clé dérivée
-// du mot de passe de l'utilisateur (envoyé haché dans l'en-tête x-sync-key).
-// Aucune dépendance npm : on utilise l'API REST d'Upstash via fetch.
+// Stocké dans Redis (Upstash via Vercel) sous une clé dérivée du mot de passe
+// (haché SHA-256, envoyé dans l'en-tête x-sync-key). Connexion via REDIS_URL.
+
+const Redis = require("ioredis");
+
+let client;
+function getClient() {
+  if (client) return client;
+  const url = process.env.REDIS_URL || process.env.KV_URL || process.env.UPSTASH_REDIS_URL;
+  if (!url) return null;
+  client = new Redis(url, { maxRetriesPerRequest: 5, lazyConnect: false });
+  client.on("error", () => {});   // évite les crashs sur erreurs transitoires
+  return client;
+}
 
 module.exports = async (req, res) => {
-  const URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!URL || !TOKEN) {
-    res.status(500).json({ error: "Stockage non configuré (variables KV manquantes)." });
-    return;
-  }
+  const redis = getClient();
+  if (!redis) { res.status(500).json({ error: "Stockage non configuré (REDIS_URL manquant)." }); return; }
 
   const key = req.headers["x-sync-key"];
   if (!key || typeof key !== "string" || key.length < 8) {
@@ -18,20 +25,10 @@ module.exports = async (req, res) => {
   }
   const redisKey = "tcfjournal:" + key;
 
-  async function cmd(command) {
-    const r = await fetch(URL, {
-      method: "POST",
-      headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
-      body: JSON.stringify(command),
-    });
-    if (!r.ok) throw new Error("KV HTTP " + r.status);
-    return r.json();
-  }
-
   try {
     if (req.method === "GET") {
-      const out = await cmd(["GET", redisKey]);
-      res.status(200).json({ data: out.result ? JSON.parse(out.result) : null });
+      const val = await redis.get(redisKey);
+      res.status(200).json({ data: val ? JSON.parse(val) : null });
       return;
     }
     if (req.method === "PUT" || req.method === "POST") {
@@ -41,7 +38,7 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: "Corps invalide (data manquant)." });
         return;
       }
-      await cmd(["SET", redisKey, JSON.stringify(body.data)]);
+      await redis.set(redisKey, JSON.stringify(body.data));
       res.status(200).json({ ok: true });
       return;
     }

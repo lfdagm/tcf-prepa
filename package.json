@@ -1,0 +1,7 @@
+{
+  "name": "tcf-ecrit-journal",
+  "private": true,
+  "dependencies": {
+    "ioredis": "^5.4.1"
+  }
+}
