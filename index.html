@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journal d'expression écrite — TCF</title>
+<style>
+  :root {
+    --bg: #f4f5fa;
+    --bg-grad-1: #eef2ff;
+    --bg-grad-2: #faf5ff;
+    --surface: #ffffff;
+    --surface-2: #f7f8fc;
+    --surface-3: #eef1f7;
+    --border: #e5e7ef;
+    --border-strong: #ced2dd;
+    --text: #1a1d29;
+    --text-muted: #555b6b;
+    --text-soft: #767d8e;
+    --primary: #4f46e5;
+    --primary-strong: #4338ca;
+    --primary-soft: #eef2ff;
+    --accent: #7b3fe4;
+    --accent-strong: #6929c4;
+    --accent-soft: #f3edff;
+    --success: #047857;
+    --success-soft: #ecfdf5;
+    --success-border: #a7f3d0;
+    --danger: #b91c1c;
+    --danger-soft: #fef2f2;
+    --danger-border: #fecaca;
+    --warn-soft: #fff7e6;
+    --warn-text: #92590e;
+    --warn-border: #e6b35c;
+    --ins-bg: #dcfce7;
+    --ins-text: #065f46;
+    --del-bg: #fee2e2;
+    --del-text: #991b1b;
+    --shadow-sm: 0 1px 2px rgba(15,23,42,.05), 0 1px 3px rgba(15,23,42,.06);
+    --shadow-md: 0 4px 14px rgba(15,23,42,.07), 0 2px 4px rgba(15,23,42,.05);
+    --shadow-lg: 0 14px 36px rgba(15,23,42,.09), 0 4px 12px rgba(15,23,42,.06);
+    --ring: 0 0 0 3px rgba(79,70,229,.32);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --t: 160ms cubic-bezier(.2,.7,.2,1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1018;
+      --bg-grad-1: #131527;
+      --bg-grad-2: #1a132b;
+      --surface: #181b27;
+      --surface-2: #1f2433;
+      --surface-3: #262b3c;
+      --border: #2a3043;
+      --border-strong: #353b51;
+      --text: #ecedf3;
+      --text-muted: #a4abc0;
+      --text-soft: #7e8499;
+      --primary: #818cf8;
+      --primary-strong: #a5b4fc;
+      --primary-soft: #1e2148;
+      --accent: #b794f4;
+      --accent-strong: #c9adfb;
+      --accent-soft: #2a1f45;
+      --success: #34d399;
+      --success-soft: #0c2a22;
+      --success-border: #1f5a45;
+      --danger: #f87171;
+      --danger-soft: #2c1618;
+      --danger-border: #5c2a2a;
+      --warn-soft: #2a2110;
+      --warn-text: #e8c07a;
+      --warn-border: #6b551f;
+      --ins-bg: #13361f;
+      --ins-text: #7ee2a8;
+      --del-bg: #3a1a1c;
+      --del-text: #f7a6a6;
+      --ring: 0 0 0 3px rgba(129,140,248,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, var(--bg-grad-1), transparent 55%),
+      radial-gradient(1000px 700px at 100% 0%, var(--bg-grad-2), transparent 50%),
+      var(--bg);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 80px; }
+  header.app { margin-bottom: 18px; }
+  h1 { font-size: 1.5rem; margin: 0 0 2px; letter-spacing: -.02em; }
+  .subtitle { color: var(--text-soft); font-size: .9rem; margin: 0 0 16px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); padding: 6px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+  .tab { flex: 1; min-width: 90px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; font-size: .92rem; padding: 9px 10px; border-radius: var(--radius-md); cursor: pointer; transition: var(--t); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .tab:hover { background: var(--surface-3); color: var(--text); }
+  .tab.active { background: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
+  .tab .badge { background: rgba(0,0,0,.12); border-radius: 999px; padding: 1px 8px; font-size: .78rem; }
+  .tab.active .badge { background: rgba(255,255,255,.25); }
+  @media (prefers-color-scheme: dark) { .tab.active { color: #0d1018; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 16px; margin-top: 14px; }
+  .card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .spacer { flex: 1; }
+
+  button.btn { font: inherit; font-weight: 600; border-radius: var(--radius-md); padding: 9px 14px; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); transition: var(--t); }
+  button.btn:hover { background: var(--surface-3); }
+  button.btn:focus-visible, .tab:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; box-shadow: var(--ring); }
+  button.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  button.btn.primary:hover { background: var(--primary-strong); }
+  button.btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
+  button.btn.ghost:hover { background: var(--surface-3); color: var(--text); }
+  button.btn.danger { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }
+  button.btn.sm { padding: 5px 10px; font-size: .85rem; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); }
+  .chip.t1 { background: var(--primary-soft); color: var(--primary-strong); border-color: transparent; }
+  .chip.t2 { background: var(--accent-soft); color: var(--accent-strong); border-color: transparent; }
+  .chip.t3 { background: var(--warn-soft); color: var(--warn-text); border-color: var(--warn-border); }
+  .chip.type { background: var(--accent-soft); color: var(--accent-strong); border-color: transparent; }
+
+  label.field { display: block; margin-top: 12px; }
+  label.field > span { display: block; font-size: .82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+  input[type=text], input[type=date], select, textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-md); padding: 10px 12px; transition: var(--t); }
+  textarea { min-height: 90px; resize: vertical; line-height: 1.55; }
+  textarea.big { min-height: 150px; }
+
+  .muted { color: var(--text-soft); }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+  .search { flex: 1; min-width: 160px; }
+  .filters { margin-top: 14px; }
+  .filters select { width: auto; }
+  .period-bar { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 8px 12px; }
+  .period-label { font-weight: 700; font-size: 1.05rem; text-transform: capitalize; min-width: 190px; text-align: center; }
+  .period-label .muted { font-weight: 600; text-transform: none; }
+
+  .consigne { background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: 10px 12px; font-size: .92rem; color: var(--text-muted); white-space: pre-wrap; }
+
+  .texte-body { white-space: pre-wrap; line-height: 1.7; font-size: 1rem; }
+  ins { background: var(--ins-bg); color: var(--ins-text); text-decoration: none; border-radius: 4px; padding: 0 2px; font-weight: 600; }
+  del { background: var(--del-bg); color: var(--del-text); text-decoration: line-through; border-radius: 4px; padding: 0 2px; }
+  .diff-legend { font-size: .8rem; color: var(--text-soft); margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .diff-legend .k { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .sbs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 640px) { .sbs { grid-template-columns: 1fr; } }
+  .col { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; }
+  .col.corr { border-color: var(--success-border); }
+  .col-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-soft); margin-bottom: 8px; }
+  .col-head .wc { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-muted); background: var(--surface-3); padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+
+  /* Navigateur de cartes (une à la fois) */
+  .browser-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; }
+  .fcount { text-align: center; color: var(--text-soft); font-size: .85rem; }
+  .expr { font-size: 1.6rem; font-weight: 700; color: var(--success); line-height: 1.35; margin: 10px 0 4px; }
+  .expr-ex { font-style: italic; color: var(--text-muted); font-size: 1rem; margin: 8px 0 0; }
+  .expr-note { color: var(--text-muted); font-size: .95rem; margin: 10px 0 0; }
+  .expr-avant { font-size: .9rem; color: var(--text-soft); margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .expr-avant span { color: var(--danger); text-decoration: line-through; }
+  .kbd-hint { text-align: center; color: var(--text-soft); font-size: .8rem; margin-top: 10px; }
+  kbd { background: var(--surface-3); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; font-size: .78rem; font-family: inherit; color: var(--text-muted); }
+  .grade-row kbd { opacity: .7; margin-left: 2px; }
+
+  /* S'entraîner : écriture (plein écran, seule la réponse défile) */
+  .write-view { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .write-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 5px 10px; flex: 0 0 auto; }
+  .timer { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .timer.over { color: var(--danger); }
+  .timer.low { color: var(--warn-text); }
+  .write-top .radio-pills button { padding: 3px 8px; font-size: .95rem; }
+  .consigne-ref { background: var(--surface-2); border-left: 3px solid var(--primary); border-radius: var(--radius-sm); padding: 12px 15px; font-size: 1.02rem; line-height: 1.55; color: var(--text); white-space: pre-wrap; flex: 0 0 auto; max-height: 34vh; overflow-y: auto; }
+  .write-area { flex: 1 1 auto; min-height: 0; font-size: 1.08rem; line-height: 1.75; resize: none; overflow-y: auto; }
+  .write-foot { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+  .write-foot .muted b { color: var(--text); font-size: 1.02rem; }
+  body.writing .wrap { padding-bottom: 12px; }
+  body.writing .app h1, body.writing .subtitle { display: none; }
+  .radio-pills { display: inline-flex; gap: 6px; }
+  .radio-pills button { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); font: inherit; font-weight: 600; font-size: .85rem; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .radio-pills button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  @media (prefers-color-scheme: dark) { .radio-pills button.on { color: #0d1018; } }
+
+  .empty { text-align: center; color: var(--text-soft); padding: 40px 16px; }
+  .empty .big { font-size: 2.4rem; margin-bottom: 8px; }
+
+  /* Flashcard */
+  .flash { min-height: 220px; display: flex; flex-direction: column; justify-content: center; gap: 12px; text-align: center; padding: 30px 20px; cursor: pointer; }
+  .flash .cue-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-soft); font-weight: 700; }
+  .flash .cue { font-size: 1.25rem; font-weight: 600; }
+  .flash .answer { font-size: 1.35rem; font-weight: 700; color: var(--success); }
+  .flash .wrong { color: var(--danger); text-decoration: line-through; font-weight: 600; }
+  .flash .ex { font-style: italic; color: var(--text-muted); }
+  .grade-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .grade-row button { padding: 12px 6px; font-size: .9rem; }
+  .g-again { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }
+  .g-hard { color: var(--warn-text); border-color: var(--warn-border); background: var(--warn-soft); }
+  .g-good { color: var(--primary-strong); border-color: transparent; background: var(--primary-soft); }
+  .g-easy { color: var(--success); border-color: var(--success-border); background: var(--success-soft); }
+  .flip-hint { text-align: center; color: var(--text-soft); font-size: .85rem; margin-top: 4px; }
+
+  /* Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(10,12,20,.5); backdrop-filter: blur(2px); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; z-index: 50; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); width: 100%; max-width: 640px; padding: 20px; margin: auto; }
+  .modal h2 { margin: 0 0 4px; font-size: 1.2rem; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .modal-scroll { max-height: 56vh; overflow-y: auto; margin-top: 10px; padding-right: 4px; }
+  .hint-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: .85rem; color: var(--text-muted); margin-top: 8px; }
+  .hint-box code { background: var(--surface-3); padding: 1px 5px; border-radius: 4px; font-size: .82rem; }
+  .cand-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border); }
+  .cand-row:first-of-type { border-top: none; }
+  .cand-chk { padding-top: 8px; }
+  .cand-chk input { width: 18px; height: 18px; }
+  .cand-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .cand-arrow { align-self: center; color: var(--text-soft); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; text-align: center; }
+  .stat .n { font-size: 1.6rem; font-weight: 700; }
+  .stat .l { font-size: .78rem; color: var(--text-soft); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: .9rem; font-weight: 600; box-shadow: var(--shadow-lg); z-index: 100; opacity: 0; transition: opacity var(--t); pointer-events: none; }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1>Journal d'expression écrite</h1>
+    <p class="subtitle">TCF · mes textes, mes corrections et mes cartes à réviser</p>
+    <nav class="tabs" id="tabs">
+      <button class="tab" data-tab="sentrainer">✍️ S'entraîner</button>
+      <button class="tab" data-tab="textes">📝 Textes</button>
+      <button class="tab" data-tab="cartes">🃏 Cartes</button>
+      <button class="tab" data-tab="reviser">🔁 Réviser <span class="badge" id="dueBadge">0</span></button>
+      <button class="tab" data-tab="donnees">💾 Données</button>
+    </nav>
+  </header>
+  <main id="app"></main>
+</div>
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Données de base éditables (option « code »).
+   Elles ne sont importées qu'au tout premier chargement.
+   Ensuite, tout vit dans le navigateur (localStorage) + export JSON.
+   ============================================================ */
+const SEED = {
+  textes: [
+    {
+      id: "seed-t1",
+      date: "2026-07-30",
+      tache: 2,
+      annee: 2026,
+      mois: 7,
+      combinaison: "1",
+      consigne: "Sur un forum, donnez votre opinion sur l'importance de l'éducation dans la société (120-150 mots).",
+      original: "L'éducation est important à la société. Il faut que je vais à l'école pour apprendre.",
+      corrige: "L'éducation joue un rôle important dans la société. Il faut que j'aille à l'école pour apprendre.",
+      note: "Exemple de démonstration — modifiable ou supprimable."
+    }
+  ],
+  cartes: [
+    {
+      id: "seed-c1", tipo: "expression",
+      avant: "être important à…",
+      apres: "jouer un rôle important dans…",
+      note: "« important à » ne se dit pas ; on emploie « jouer un rôle important dans ».",
+      exemple: "L'éducation joue un rôle important dans le développement d'un pays.",
+      source: "Ayoub — Sujet exemple", tags: ["collocation", "registre formel"],
+      texteId: "seed-t1", cree: "2026-07-30", srs: { due: "2026-07-30", interval: 0, ease: 2.5, reps: 0 }
+    },
+    {
+      id: "seed-c2", tipo: "conjugaison",
+      avant: "il faut que je vais",
+      apres: "il faut que j'aille",
+      note: "« il faut que » + subjonctif. aller → que j'aille.",
+      exemple: "Il faut que j'aille au travail plus tôt demain.",
+      source: "Ayoub — Sujet exemple", tags: ["subjonctif", "aller"],
+      texteId: "seed-t1", cree: "2026-07-30", srs: { due: "2026-07-30", interval: 0, ease: 2.5, reps: 0 }
+    }
+  ]
+};
+
+const TYPES = [
+  { v: "expression", l: "Expression / collocation" },
+  { v: "conjugaison", l: "Conjugaison" },
+  { v: "grammaire", l: "Grammaire" },
+  { v: "preposition", l: "Préposition" },
+  { v: "vocabulaire", l: "Vocabulaire" },
+  { v: "connecteur", l: "Connecteur logique" },
+  { v: "orthographe", l: "Orthographe" },
+  { v: "autre", l: "Autre" }
+];
+const typeLabel = v => (TYPES.find(t => t.v === v) || { l: v }).l;
+
+const KEY = "tcf-ecrit-journal-v1";
+let store = load();
+let tblCtx = { source: "", texteId: null };   // contexte du dernier « coller un tableau »
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  const seeded = { textes: JSON.parse(JSON.stringify(SEED.textes)), cartes: JSON.parse(JSON.stringify(SEED.cartes)) };
+  localStorage.setItem(KEY, JSON.stringify(seeded));
+  return seeded;
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(store)); updateDueBadge(); }
+
+/* ---------- utilitaires ---------- */
+const $ = sel => document.querySelector(sel);
+function uid() { return "id-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36); }
+function todayISO() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function fmtDate(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._to); t._to = setTimeout(() => t.classList.remove("show"), 1800); }
+
+/* ---------- diff mot à mot (LCS) ---------- */
+function tokenize(text) { return (text || "").match(/[\p{L}\p{N}’'\-]+|\s+|[^\p{L}\p{N}\s]/gu) || []; }
+function diffTokens(a, b) {
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--)
+    for (let j = m - 1; j >= 0; j--)
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { out.push({ t: "eq", v: a[i] }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { out.push({ t: "del", v: a[i] }); i++; }
+    else { out.push({ t: "ins", v: b[j] }); j++; }
+  }
+  while (i < n) out.push({ t: "del", v: a[i++] });
+  while (j < m) out.push({ t: "ins", v: b[j++] });
+  return out;
+}
+// on compte les « mots » comme CalmlyWriter : seules les suites contenant au moins une lettre
+// (les nombres seuls comme « 5 » ne sont pas comptés)
+function countWords(s) { return ((s || "").match(/[\p{L}\p{N}’'\-]+/gu) || []).filter(w => /\p{L}/u.test(w)).length; }
+function diffSides(original, corrige) {
+  const parts = diffTokens(tokenize(original), tokenize(corrige));
+  let left = "", right = "";
+  for (const p of parts) {
+    const v = esc(p.v), ws = /^\s+$/.test(p.v);
+    if (p.t === "eq") { left += v; right += v; }
+    else if (p.t === "del") { left += ws ? v : `<del>${v}</del>`; }
+    else { right += ws ? v : `<ins>${v}</ins>`; }
+  }
+  return { left, right };
+}
+
+/* ---------- répétition espacée (SM-2) ---------- */
+function newSrs() { return { due: todayISO(), interval: 0, ease: 2.5, reps: 0 }; }
+function addDays(iso, days) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + days); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function schedule(srs, quality) {
+  let { ease = 2.5, interval = 0, reps = 0 } = srs || {};
+  if (quality < 3) { reps = 0; interval = 0; }
+  else {
+    reps += 1;
+    if (reps === 1) interval = 1;
+    else if (reps === 2) interval = 6;
+    else interval = Math.round(interval * ease);
+    ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    if (ease < 1.3) ease = 1.3;
+  }
+  return { ease: Math.round(ease * 100) / 100, interval, reps, due: addDays(todayISO(), interval) };
+}
+function isDue(c) { return (c.srs?.due || todayISO()) <= todayISO(); }
+function dueCount() { return store.cartes.filter(isDue).length; }
+function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = dueCount(); }
+
+/* ============================================================
+   État de l'interface
+   ============================================================ */
+let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0 };
+const DUREE_DEFAUT = { 1: 15, 2: 20, 3: 25 };   // minutes indicatives par tâche (TCF ≈ 60 min au total)
+let timerInterval = null;
+const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+function moisLabel(m) { return MOIS[(m || 1) - 1] || ""; }
+function curYear() { return new Date().getFullYear(); }
+function curMonth() { return new Date().getMonth() + 1; }
+function anneesList() { const y = curYear(); const out = []; for (let a = y + 1; a >= 2023; a--) out.push(a); return out; }
+// libellé Ayoub : « Combinaison 3 · juillet 2026 » (avec repli sur l'ancien champ source)
+function sourceLabel(t) {
+  if (t.combinaison != null && String(t.combinaison).trim() !== "") return `Combinaison ${t.combinaison} · ${moisLabel(t.mois)} ${t.annee}`;
+  return t.source || "";
+}
+
+function setTab(t) {
+  if (ui.session && ui.session.phase === "write" && ui.tab === "sentrainer" && t !== "sentrainer") {
+    // on garde la session en cours ; le chrono continue en arrière-plan
+  }
+  ui.tab = t; render();
+}
+
+/* ============================================================
+   Rendu
+   ============================================================ */
+const app = () => $("#app");
+
+function render() {
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === ui.tab));
+  updateDueBadge();
+  const writing = ui.tab === "sentrainer" && ui.session && ui.session.phase === "write";
+  document.body.classList.toggle("writing", writing);
+  if (!writing) stopTimer();
+  if (ui.tab === "sentrainer") renderSentrainer();
+  else if (ui.tab === "textes") renderTextes();
+  else if (ui.tab === "reviser") renderReviser();
+  else if (ui.tab === "cartes") renderCartes();
+  else renderDonnees();
+}
+
+/* ---------- Onglet S'entraîner (écriture + timer) ---------- */
+function newSession() {
+  return { phase: "setup", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", consigne: "", original: "", corrige: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, tempsSec: 0 };
+}
+function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+function startTimer() {
+  stopTimer();
+  if (!ui.session.startMs) ui.session.startMs = Date.now();
+  updateTimer();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+function fmtClock(sec) { const neg = sec < 0; const s = Math.abs(sec); return (neg ? "-" : "") + String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
+function updateTimer() {
+  const el = $("#timerDisplay"); if (!el || !ui.session || !ui.session.startMs) return;
+  const elapsed = Math.floor((Date.now() - ui.session.startMs) / 1000);
+  let cls = "timer";
+  if (ui.session.timerMode === "down") {
+    const remain = ui.session.durationMin * 60 - elapsed;
+    el.textContent = fmtClock(remain);
+    if (remain <= 0) cls += " over"; else if (remain <= 60) cls += " low";
+  } else { el.textContent = fmtClock(elapsed); }
+  el.className = cls;
+}
+function updateCounts() {
+  const w = $("#wcWords"), c = $("#wcChars"); if (!w) return;
+  const ta = $("#writeArea"); const v = ta ? ta.value : "";
+  w.textContent = countWords(v); c.textContent = v.length;
+}
+function sizeWriteView() {
+  const wv = document.querySelector(".write-view"); if (!wv) return;
+  const top = wv.getBoundingClientRect().top;
+  wv.style.height = Math.max(280, window.innerHeight - top - 12) + "px";
+}
+
+function renderSentrainer() {
+  if (!ui.session) ui.session = newSession();
+  const s = ui.session;
+  if (s.phase === "write") return renderWrite();
+  if (s.phase === "correct") return renderEditor();
+  // phase setup
+  app().innerHTML = `
+    <div class="card">
+      <h3>✍️ Nouvelle pratique</h3>
+      <div class="row" style="margin-top:6px">
+        <label class="field" style="flex:1"><span>Tâche</span>
+          <select id="s_tache">
+            <option value="1"${s.tache == 1 ? " selected" : ""}>Tâche 1</option>
+            <option value="2"${s.tache == 2 ? " selected" : ""}>Tâche 2</option>
+            <option value="3"${s.tache == 3 ? " selected" : ""}>Tâche 3</option>
+          </select></label>
+        <label class="field" style="flex:1"><span>Combinaison</span><input type="text" inputmode="numeric" id="s_comb" value="${esc(String(s.combinaison))}" placeholder="ex. 3"></label>
+      </div>
+      <div class="row">
+        <label class="field" style="flex:2"><span>Mois</span><select id="s_mois">${MOIS.map((m, i) => `<option value="${i + 1}"${s.mois == i + 1 ? " selected" : ""}>${m}</option>`).join("")}</select></label>
+        <label class="field" style="flex:1"><span>Année</span><select id="s_annee">${anneesList().map(a => `<option value="${a}"${s.annee == a ? " selected" : ""}>${a}</option>`).join("")}</select></label>
+      </div>
+      <label class="field"><span>Consigne (colle-la ici)</span><textarea id="s_consigne" class="big" placeholder="Colle l'énoncé de la tâche…">${esc(s.consigne)}</textarea></label>
+      <div class="row" style="margin-top:14px;align-items:flex-end">
+        <div>
+          <span style="display:block;font-size:.82rem;font-weight:600;color:var(--text-muted);margin-bottom:5px">Chrono</span>
+          <div class="radio-pills">
+            <button type="button" data-action="setup-mode" data-mode="down" class="${s.timerMode === "down" ? "on" : ""}">⏳ Rebours</button>
+            <button type="button" data-action="setup-mode" data-mode="up" class="${s.timerMode === "up" ? "on" : ""}">⏱️ Chrono</button>
+          </div>
+        </div>
+        <label class="field" id="minWrap" style="margin-top:0;width:140px${s.timerMode === "up" ? ";display:none" : ""}"><span>Minutes</span><input type="text" inputmode="numeric" id="s_min" value="${s.durationMin}"></label>
+        <div class="spacer"></div>
+        <button class="btn primary" data-action="session-write">Commencer à écrire →</button>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.85rem;text-align:center;margin-top:12px">Durées indicatives : T1 ≈ 15 min · T2 ≈ 20 min · T3 ≈ 25 min (≈ 60 min au total au TCF).</p>`;
+  $("#s_tache").addEventListener("change", e => { s.tache = Number(e.target.value); s.durationMin = DUREE_DEFAUT[s.tache]; const mi = $("#s_min"); if (mi) mi.value = s.durationMin; });
+  $("#s_comb").addEventListener("input", e => s.combinaison = e.target.value.trim());
+  $("#s_mois").addEventListener("change", e => s.mois = Number(e.target.value));
+  $("#s_annee").addEventListener("change", e => s.annee = Number(e.target.value));
+  $("#s_consigne").addEventListener("input", e => s.consigne = e.target.value);
+  $("#s_min").addEventListener("input", e => s.durationMin = Math.max(1, parseInt(e.target.value, 10) || 1));
+}
+
+function renderWrite() {
+  const s = ui.session;
+  app().innerHTML = `
+    <div class="write-view">
+      <div class="write-top">
+        <span class="timer" id="timerDisplay">--:--</span>
+        <div class="radio-pills">
+          <button type="button" data-action="timer-mode" data-mode="down" class="${s.timerMode === "down" ? "on" : ""}">⏳</button>
+          <button type="button" data-action="timer-mode" data-mode="up" class="${s.timerMode === "up" ? "on" : ""}">⏱️</button>
+        </div>
+        <span class="chip t${s.tache}">Tâche ${s.tache}</span>
+        ${s.combinaison !== "" ? `<span class="chip">Comb. ${esc(String(s.combinaison))}</span>` : ""}
+        <div class="spacer"></div>
+        ${s.consigne ? `<button type="button" class="btn ghost sm" data-action="toggle-consigne">👁 Consigne</button>` : ""}
+      </div>
+      ${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : ""}
+      <textarea id="writeArea" class="write-area" placeholder="Écris ici ta réponse à la consigne…">${esc(s.original)}</textarea>
+      <div class="write-foot">
+        <span class="muted"><b id="wcWords">0</b> mots · <b id="wcChars">0</b> caractères</span>
+        <div class="spacer"></div>
+        <button class="btn ghost" data-action="session-cancel">Abandonner</button>
+        <button class="btn primary" data-action="session-finish">Terminer ✓</button>
+      </div>
+    </div>`;
+  const ta = $("#writeArea");
+  ta.addEventListener("input", () => { s.original = ta.value; updateCounts(); });
+  updateCounts();
+  startTimer();
+  sizeWriteView();
+  ta.focus();
+}
+
+function renderEditor() {
+  const s = ui.session;
+  const isEdit = !!s.editingId;
+  app().innerHTML = `
+    <div class="card">
+      <h3>${isEdit ? "✏️ Modifier le texte" : "📋 Corriger & enregistrer"}</h3>
+      <div class="row" style="margin-top:6px">
+        <label class="field" style="flex:1"><span>Tâche</span>
+          <select id="e_tache">
+            <option value="1"${s.tache == 1 ? " selected" : ""}>Tâche 1</option>
+            <option value="2"${s.tache == 2 ? " selected" : ""}>Tâche 2</option>
+            <option value="3"${s.tache == 3 ? " selected" : ""}>Tâche 3</option>
+          </select></label>
+        <label class="field" style="flex:1"><span>Combinaison</span><input type="text" inputmode="numeric" id="e_comb" value="${esc(String(s.combinaison ?? ""))}" placeholder="ex. 3"></label>
+      </div>
+      <div class="row">
+        <label class="field" style="flex:2"><span>Mois</span><select id="e_mois">${MOIS.map((m, i) => `<option value="${i + 1}"${s.mois == i + 1 ? " selected" : ""}>${m}</option>`).join("")}</select></label>
+        <label class="field" style="flex:1"><span>Année</span><select id="e_annee">${anneesList().map(a => `<option value="${a}"${s.annee == a ? " selected" : ""}>${a}</option>`).join("")}</select></label>
+      </div>
+      <label class="field"><span>Consigne</span><textarea id="e_consigne">${esc(s.consigne)}</textarea></label>
+      <label class="field"><span>Ma version <span class="muted" id="e_wc1"></span></span><textarea id="e_original" class="big">${esc(s.original)}</textarea></label>
+      <label class="field"><span>Version corrigée — colle la correction de ChatGPT <span class="muted" id="e_wc2"></span></span><textarea id="e_corrige" class="big" placeholder="Colle ici la version corrigée…">${esc(s.corrige)}</textarea></label>
+      <div id="e_preview"></div>
+      <div class="modal-actions">
+        <button class="btn primary" data-action="session-save">${isEdit ? "Enregistrer" : (s.corrige ? "Enregistrer" : "Enregistrer (correction plus tard)")}</button>
+        <button class="btn ghost" data-action="session-cancel">Annuler</button>
+      </div>
+    </div>`;
+  const upd = () => {
+    s.original = $("#e_original").value; s.corrige = $("#e_corrige").value;
+    $("#e_wc1").textContent = "· " + countWords(s.original) + " mots";
+    $("#e_wc2").textContent = "· " + countWords(s.corrige) + " mots";
+    const sides = diffSides(s.original, s.corrige);
+    $("#e_preview").innerHTML = s.corrige.trim() ? `
+      <div class="sbs">
+        <div class="col"><div class="col-head"><span>Ma version</span></div><div class="texte-body">${sides.left}</div></div>
+        <div class="col corr"><div class="col-head"><span>Version corrigée</span></div><div class="texte-body">${sides.right}</div></div>
+      </div>` : "";
+  };
+  $("#e_tache").addEventListener("change", e => s.tache = Number(e.target.value));
+  $("#e_comb").addEventListener("input", e => s.combinaison = e.target.value.trim());
+  $("#e_mois").addEventListener("change", e => s.mois = Number(e.target.value));
+  $("#e_annee").addEventListener("change", e => s.annee = Number(e.target.value));
+  $("#e_consigne").addEventListener("input", e => s.consigne = e.target.value);
+  $("#e_original").addEventListener("input", upd);
+  $("#e_corrige").addEventListener("input", upd);
+  upd();
+}
+
+/* ---------- Onglet Textes ---------- */
+function renderTextes() {
+  const searching = ui.search.trim() !== "";
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // mois présents (avec nb de combinaisons distinctes)
+  const monthMap = new Map();
+  for (const t of store.textes) {
+    if (!t.annee || !t.mois) continue;
+    const key = t.annee + "-" + t.mois;
+    if (!monthMap.has(key)) monthMap.set(key, new Set());
+    monthMap.get(key).add(String(t.combinaison ?? ""));
+  }
+  const selKey = ui.periodY + "-" + ui.periodM;
+  const months = [...monthMap.entries()].map(([k, set]) => { const [y, m] = k.split("-").map(Number); return { y, m, key: k, n: set.size }; });
+  if (!monthMap.has(selKey)) months.push({ y: ui.periodY, m: ui.periodM, key: selKey, n: 0 });
+  months.sort((a, b) => b.y - a.y || b.m - a.m);
+
+  // combinaisons du mois sélectionné
+  const monthTexts = store.textes.filter(t => Number(t.annee) === ui.periodY && Number(t.mois) === ui.periodM);
+  const combos = [...new Set(monthTexts.map(t => String(t.combinaison ?? "")))].sort((a, b) => (Number(a) || 0) - (Number(b) || 0));
+  if (ui.combIdx >= combos.length) ui.combIdx = 0;
+  if (ui.combIdx < 0) ui.combIdx = Math.max(0, combos.length - 1);
+  const curCombo = combos[ui.combIdx];
+
+  let list;
+  if (searching) {
+    const q = ui.search.toLowerCase();
+    list = store.textes.filter(t => [sourceLabel(t), t.consigne, t.original, t.corrige].join(" ").toLowerCase().includes(q));
+    list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  } else {
+    list = monthTexts.filter(t => String(t.combinaison ?? "") === curCombo);
+    list.sort((a, b) => a.tache - b.tache);
+  }
+  if (ui.tFilter !== "all") list = list.filter(t => String(t.tache) === ui.tFilter);
+
+  const monthOpts = months.map(o => `<option value="${o.key}"${o.key === selKey ? " selected" : ""}>${cap(moisLabel(o.m))} ${o.y} — ${o.n} combinaison${o.n > 1 ? "s" : ""}</option>`).join("");
+
+  let html = `
+    <div class="row filters">
+      <select id="monthSel" style="flex:1;min-width:190px">${monthOpts}</select>
+      <select id="tFilter">
+        <option value="all"${ui.tFilter === "all" ? " selected" : ""}>Toutes les tâches</option>
+        <option value="1"${ui.tFilter === "1" ? " selected" : ""}>Tâche 1</option>
+        <option value="2"${ui.tFilter === "2" ? " selected" : ""}>Tâche 2</option>
+        <option value="3"${ui.tFilter === "3" ? " selected" : ""}>Tâche 3</option>
+      </select>
+      <input class="search" id="searchInput" type="text" placeholder="Rechercher partout…" value="${esc(ui.search)}">
+    </div>
+    ${searching ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">🔎 Recherche sur tous les mois.</p>`
+      : (combos.length ? `
+    <div class="period-bar">
+      <button class="btn sm" data-action="comb-prev" aria-label="Combinaison précédente">‹</button>
+      <div class="period-label">Combinaison ${esc(curCombo || "—")} <span class="muted">· ${ui.combIdx + 1} / ${combos.length}</span></div>
+      <button class="btn sm" data-action="comb-next" aria-label="Combinaison suivante">›</button>
+    </div>
+    <div class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> changer de combinaison</div>` : "")}`;
+
+  if (!list.length) {
+    let msg;
+    if (searching) msg = "Aucun résultat pour cette recherche.";
+    else if (!combos.length) msg = `Aucun texte en <b>${cap(moisLabel(ui.periodM))} ${ui.periodY}</b>.<br>Choisis un autre mois, ou va dans <b>✍️ S'entraîner</b>.`;
+    else msg = `Aucune Tâche ${ui.tFilter} dans la combinaison ${esc(curCombo)}.`;
+    html += `<div class="empty"><div class="big">📝</div><p>${msg}</p></div>`;
+  } else {
+    for (const t of list) {
+      const hasCorr = (t.corrige || "").trim().length > 0;
+      const sides = diffSides(t.original, t.corrige);
+      html += `
+      <div class="card">
+        <div class="meta">
+          <span class="chip t${t.tache}">Tâche ${t.tache}</span>
+          ${sourceLabel(t) ? `<span class="chip">${esc(sourceLabel(t))}</span>` : ""}
+          <span class="muted" style="font-size:.82rem">${fmtDate(t.date)}</span>
+          ${t.tempsSec ? `<span class="muted" style="font-size:.82rem">⏱ ${fmtClock(t.tempsSec)}</span>` : ""}
+          <div class="spacer"></div>
+          <button class="btn ghost sm" data-action="edit-texte" data-id="${t.id}">Modifier</button>
+          <button class="btn ghost sm" data-action="paste-from" data-id="${t.id}">＋ Cartes</button>
+          <button class="btn ghost sm" data-action="del-texte" data-id="${t.id}">Suppr.</button>
+        </div>
+        ${t.consigne ? `<div class="consigne">${esc(t.consigne)}</div>` : ""}
+        ${hasCorr ? `
+        <div class="sbs">
+          <div class="col">
+            <div class="col-head"><span>Ma version</span><span class="wc">${countWords(t.original)} mots</span></div>
+            <div class="texte-body">${sides.left}</div>
+          </div>
+          <div class="col corr">
+            <div class="col-head"><span>Version corrigée</span><span class="wc">${countWords(t.corrige)} mots</span></div>
+            <div class="texte-body">${sides.right}</div>
+          </div>
+        </div>
+        <div class="diff-legend"><span class="k"><span class="dot" style="background:var(--del-bg)"></span> retiré (ma version)</span><span class="k"><span class="dot" style="background:var(--ins-bg)"></span> ajouté / corrigé (version corrigée)</span></div>`
+        : `
+        <div class="col" style="margin-top:12px">
+          <div class="col-head"><span>Ma version</span><span class="wc">${countWords(t.original)} mots</span></div>
+          <div class="texte-body">${esc(t.original)}</div>
+        </div>
+        <div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-texte" data-id="${t.id}">＋ Ajouter la correction</button></div>`}
+      </div>`;
+    }
+  }
+  app().innerHTML = html;
+
+  const si = $("#searchInput");
+  if (si) si.addEventListener("input", e => { ui.search = e.target.value; const p = si.selectionStart; renderTextes(); const s2 = $("#searchInput"); s2.focus(); s2.setSelectionRange(p, p); });
+  const tf = $("#tFilter");
+  if (tf) tf.addEventListener("change", e => { ui.tFilter = e.target.value; renderTextes(); });
+  const ms = $("#monthSel");
+  if (ms) ms.addEventListener("change", e => { const [y, m] = e.target.value.split("-").map(Number); ui.periodY = y; ui.periodM = m; ui.combIdx = 0; renderTextes(); });
+}
+
+/* ---------- Onglet Réviser ---------- */
+function renderReviser() {
+  if (!ui.review) {
+    const due = store.cartes.filter(isDue);
+    if (!due.length) {
+      app().innerHTML = `<div class="empty"><div class="big">✅</div><p>Rien à réviser aujourd'hui !<br><span class="muted">${store.cartes.length} carte(s) au total.</span></p><div class="row" style="justify-content:center;margin-top:16px"><button class="btn" data-action="review-all">Tout revoir quand même</button></div></div>`;
+      return;
+    }
+    app().innerHTML = `<div class="empty"><div class="big">🔁</div><p><b>${due.length}</b> carte(s) à réviser aujourd'hui.</p><div class="row" style="justify-content:center;margin-top:16px"><button class="btn primary" data-action="review-start">Commencer</button></div></div>`;
+    return;
+  }
+  const { queue, idx } = ui.review;
+  if (idx >= queue.length) {
+    app().innerHTML = `<div class="empty"><div class="big">🎉</div><p>Session terminée !<br><span class="muted">${ui.review.done} révision(s).</span></p><div class="row" style="justify-content:center;margin-top:16px"><button class="btn primary" data-action="review-restart">Nouvelle session</button></div></div>`;
+    ui.review = null;
+    return;
+  }
+  const c = queue[idx];
+  const cue = c.avant || c.note || "(pas d'indice)";
+  let html = `
+    <p class="muted" style="text-align:center;margin-top:16px">${idx + 1} / ${queue.length}</p>
+    <div class="card flash" data-action="flip">
+      <span class="chip type" style="align-self:center">${typeLabel(c.tipo)}</span>`;
+  if (!ui.flipped) {
+    html += `
+      <div class="cue-label">${c.avant ? "Tu as écrit" : "Indice"}</div>
+      <div class="cue ${c.avant ? "wrong" : ""}">${esc(cue)}</div>
+      <div class="flip-hint">Clique ou <kbd>Espace</kbd> pour révéler ➜</div>`;
+  } else {
+    html += `
+      ${c.avant ? `<div class="cue wrong">${esc(c.avant)}</div>` : ""}
+      <div class="cue-label">Correct</div>
+      <div class="answer">${esc(c.apres)}</div>
+      ${c.note ? `<p class="muted">${esc(c.note)}</p>` : ""}
+      ${c.exemple ? `<p class="ex">« ${esc(c.exemple)} »</p>` : ""}`;
+  }
+  html += `</div>`;
+  if (ui.flipped) {
+    html += `
+      <div class="grade-row">
+        <button class="btn g-again" data-grade="0">Encore <kbd>1</kbd></button>
+        <button class="btn g-hard" data-grade="3">Difficile <kbd>2</kbd></button>
+        <button class="btn g-good" data-grade="4">Bien <kbd>3</kbd></button>
+        <button class="btn g-easy" data-grade="5">Facile <kbd>4</kbd></button>
+      </div>`;
+  }
+  app().innerHTML = html;
+}
+
+/* ---------- Onglet Cartes (navigateur une-à-la-fois) ---------- */
+function filteredCartes() {
+  let list = store.cartes.slice().sort((a, b) => (a.srs?.due || "").localeCompare(b.srs?.due || ""));
+  if (ui.cType !== "all") list = list.filter(c => c.tipo === ui.cType);
+  if (ui.search) { const q = ui.search.toLowerCase(); list = list.filter(c => [c.avant, c.apres, c.note, c.exemple, c.source, (c.tags || []).join(" ")].join(" ").toLowerCase().includes(q)); }
+  return list;
+}
+function renderCartes() {
+  const list = filteredCartes();
+  let html = `
+    <div class="row filters">
+      <input class="search" id="searchInput" type="text" placeholder="Rechercher dans les cartes…" value="${esc(ui.search)}">
+      <select id="cType">
+        <option value="all"${ui.cType === "all" ? " selected" : ""}>Tous les types</option>
+        ${TYPES.map(t => `<option value="${t.v}"${ui.cType === t.v ? " selected" : ""}>${t.l}</option>`).join("")}
+      </select>
+      <div class="spacer"></div>
+      <button class="btn" data-action="paste-table">⧉ Coller un tableau</button>
+      <button class="btn primary" data-action="new-carte">+ Nouvelle carte</button>
+    </div>`;
+
+  if (!list.length) {
+    html += `<div class="empty"><div class="big">🃏</div><p>Aucune carte.<br>Crée-les depuis un texte ou ici directement.</p></div>`;
+    app().innerHTML = html;
+    bindCartesFilters();
+    return;
+  }
+
+  if (ui.cIdx >= list.length) ui.cIdx = 0;
+  if (ui.cIdx < 0) ui.cIdx = list.length - 1;
+  const c = list[ui.cIdx];
+  const due = isDue(c);
+  html += `
+    <div class="card">
+      <div class="meta">
+        <span class="chip type">${typeLabel(c.tipo)}</span>
+        ${(c.tags || []).map(t => `<span class="chip">#${esc(t)}</span>`).join("")}
+        <div class="spacer"></div>
+        <span class="muted" style="font-size:.8rem">${due ? "🔔 à réviser" : "📅 " + fmtDate(c.srs?.due)}</span>
+        <button class="btn ghost sm" data-action="edit-carte" data-id="${c.id}">Modifier</button>
+        <button class="btn ghost sm" data-action="del-carte" data-id="${c.id}">Suppr.</button>
+      </div>
+      <div class="expr">${esc(c.apres)}</div>
+      ${c.exemple ? `<p class="expr-ex">« ${esc(c.exemple)} »</p>` : ""}
+      ${c.note ? `<p class="expr-note">💡 ${esc(c.note)}</p>` : ""}
+      ${c.avant ? `<p class="expr-avant">Au lieu de : <span>${esc(c.avant)}</span></p>` : ""}
+    </div>
+    <div class="browser-nav">
+      <button class="btn" data-action="carte-prev">‹ Précédent</button>
+      <button class="btn" data-action="carte-next">Suivant ›</button>
+    </div>
+    <div class="fcount">${ui.cIdx + 1} / ${list.length}</div>
+    <div class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> naviguer</div>`;
+  app().innerHTML = html;
+  bindCartesFilters();
+}
+function bindCartesFilters() {
+  const si = $("#searchInput");
+  if (si) si.addEventListener("input", e => { ui.search = e.target.value; ui.cIdx = 0; const p = si.selectionStart; renderCartes(); const s2 = $("#searchInput"); s2.focus(); s2.setSelectionRange(p, p); });
+  const ct = $("#cType");
+  if (ct) ct.addEventListener("change", e => { ui.cType = e.target.value; ui.cIdx = 0; renderCartes(); });
+}
+function carteNav(delta) { const n = filteredCartes().length; if (!n) return; ui.cIdx = (ui.cIdx + delta + n) % n; renderCartes(); }
+function monthCombos() { const mt = store.textes.filter(t => Number(t.annee) === ui.periodY && Number(t.mois) === ui.periodM); return [...new Set(mt.map(t => String(t.combinaison ?? "")))]; }
+function combShift(delta) { const n = monthCombos().length; if (!n) return; ui.combIdx = (ui.combIdx + delta + n) % n; renderTextes(); }
+
+/* ---------- Onglet Données ---------- */
+function renderDonnees() {
+  app().innerHTML = `
+    <div class="card">
+      <h3>Sauvegarde & synchronisation</h3>
+      <p class="muted" style="font-size:.9rem">Tes données sont stockées dans ce navigateur. Exporte régulièrement un fichier JSON pour ne rien perdre (et le garder dans ton dépôt privé si tu veux).</p>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" data-action="export">⬇️ Exporter (JSON)</button>
+        <button class="btn" data-action="import">⬆️ Importer (JSON)</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+      </div>
+    </div>
+    <div class="card">
+      <h3>Statistiques</h3>
+      <div class="stat-grid">
+        <div class="stat"><div class="n">${store.textes.length}</div><div class="l">textes</div></div>
+        <div class="stat"><div class="n">${store.cartes.length}</div><div class="l">cartes</div></div>
+        <div class="stat"><div class="n">${dueCount()}</div><div class="l">à réviser</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--danger)">Zone sensible</h3>
+      <button class="btn danger" data-action="reset">Tout effacer</button>
+    </div>`;
+  const f = $("#importFile");
+  if (f) f.addEventListener("change", handleImport);
+}
+
+/* ============================================================
+   Formulaires (modal)
+   ============================================================ */
+function openModal(html) { $("#modalRoot").innerHTML = `<div class="overlay" data-overlay><div class="modal">${html}</div></div>`; }
+function closeModal() { $("#modalRoot").innerHTML = ""; }
+
+function startWriting() {
+  const s = ui.session;
+  s.consigne = ($("#s_consigne") || {}).value ?? s.consigne;
+  s.startMs = null; s.phase = "write"; render();
+}
+function finishWriting() {
+  const ta = $("#writeArea"); if (ta) ui.session.original = ta.value;
+  if (ui.session.startMs) ui.session.tempsSec = Math.floor((Date.now() - ui.session.startMs) / 1000);
+  stopTimer(); ui.session.phase = "correct"; render();
+}
+function startEdit(id) {
+  const t = store.textes.find(x => x.id === id); if (!t) return;
+  stopTimer();
+  ui.session = { phase: "correct", editingId: id, tache: t.tache, annee: t.annee || curYear(), mois: t.mois || curMonth(), combinaison: t.combinaison ?? "", consigne: t.consigne || "", original: t.original || "", corrige: t.corrige || "", timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0 };
+  ui.tab = "sentrainer"; render();
+}
+function saveSession() {
+  const s = ui.session;
+  s.tache = Number(($("#e_tache") || {}).value || s.tache);
+  s.consigne = ($("#e_consigne") || {}).value ?? s.consigne;
+  s.original = ($("#e_original") || {}).value ?? s.original;
+  s.corrige = ($("#e_corrige") || {}).value ?? s.corrige;
+  if (!s.original.trim() && !s.corrige.trim()) { alert("Ajoute au moins ta version ou la correction."); return; }
+  const data = { tache: s.tache, annee: s.annee, mois: s.mois, combinaison: String(s.combinaison).trim(), consigne: s.consigne.trim(), original: s.original, corrige: s.corrige, tempsSec: s.tempsSec || 0 };
+  if (s.editingId) { const t = store.textes.find(x => x.id === s.editingId); Object.assign(t, data); }
+  else { store.textes.unshift(Object.assign({ id: uid(), date: todayISO() }, data)); }
+  ui.session = null; save(); ui.tab = "textes"; render(); toast("Texte enregistré ✔");
+}
+function cancelSession() {
+  if (ui.session && ui.session.phase === "write" && (ui.session.original || "").trim() && !confirm("Abandonner ce texte ? Ce que tu as écrit sera perdu.")) return;
+  stopTimer(); const wasEdit = ui.session && ui.session.editingId; ui.session = null;
+  ui.tab = wasEdit ? "textes" : "sentrainer"; render();
+}
+
+function carteForm(c, prefill) {
+  const e = c || Object.assign({ tipo: "expression", avant: "", apres: "", note: "", exemple: "", source: "", tags: [], texteId: null }, prefill || {});
+  openModal(`
+    <h2>${c ? "Modifier la carte" : "Nouvelle carte"}</h2>
+    <label class="field"><span>Type</span><select id="c_tipo">${TYPES.map(t => `<option value="${t.v}"${e.tipo === t.v ? " selected" : ""}>${t.l}</option>`).join("")}</select></label>
+    <label class="field"><span>Ce que j'ai écrit / dit (facultatif)</span><input type="text" id="c_avant" value="${esc(e.avant)}"></label>
+    <label class="field"><span>Forme correcte ✅</span><input type="text" id="c_apres" value="${esc(e.apres)}"></label>
+    <label class="field"><span>Explication / règle</span><textarea id="c_note">${esc(e.note)}</textarea></label>
+    <label class="field"><span>Exemple correct</span><textarea id="c_exemple">${esc(e.exemple)}</textarea></label>
+    <div class="row">
+      <label class="field" style="flex:1"><span>Source</span><input type="text" id="c_source" value="${esc(e.source)}"></label>
+      <label class="field" style="flex:1"><span>Tags (séparés par des virgules)</span><input type="text" id="c_tags" value="${esc((e.tags || []).join(", "))}"></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" data-action="save-carte" data-id="${c ? c.id : ""}" data-texte="${e.texteId || ""}">Enregistrer</button>
+      <button class="btn ghost" data-action="cancel">Annuler</button>
+    </div>`);
+}
+
+/* ============================================================
+   Coller un tableau de corrections (ChatGPT) → cartes
+   ============================================================ */
+function cleanCell(c) { return (c || "").replace(/\*\*/g, "").replace(/`/g, "").trim(); }
+function parseTable(raw) {
+  const out = [];
+  for (const line of (raw || "").split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t) continue;
+    let cells;
+    if (t.includes("|")) cells = t.split("|");
+    else if (t.includes("\t")) cells = t.split("\t");
+    else if (t.includes("→")) cells = t.split("→");
+    else if (t.includes("->")) cells = t.split("->");
+    else continue;
+    cells = cells.map(c => c.trim());
+    while (cells.length && cells[0] === "") cells.shift();
+    while (cells.length && cells[cells.length - 1] === "") cells.pop();
+    if (cells.length < 2) continue;
+    if (cells.every(c => /^:?-{2,}:?$/.test(c))) continue;          // ligne de séparation ---
+    if (/❌|✅/.test(cells[0] + cells[1])) continue;                 // en-tête avec émojis
+    const avant = cleanCell(cells[0]), apres = cleanCell(cells[1]);
+    if (!avant && !apres) continue;
+    if (/naturel|natural/i.test(avant + " " + apres)) continue;      // en-tête « moins/plus naturel »
+    out.push({ avant, apres, note: cleanCell(cells[2] || ""), exemple: cleanCell(cells[3] || "") });
+  }
+  return out;
+}
+// format « prose » : « expression = sens » suivi d'exemples (une carte par ligne « = »)
+function parseExpressions(raw) {
+  const lines = (raw || "").split(/\r?\n/).map(l => l.trim());
+  const isMeta = l => !l || /^[✅❌]/.test(l)
+    || /^(exemples?|ejemplos?)\s*:?\s*$/i.test(l)
+    || /(toutes ces phrases|todas estas frases|parfaitement naturel|perfectamente natural)/i.test(l);
+  const eqLines = lines.filter(l => l.includes("=") && !isMeta(l));
+  if (!eqLines.length) return [];
+  const examples = lines.filter(l => !l.includes("=") && !isMeta(l) && /\s/.test(l) && l.length > 12);
+  const out = [];
+  for (const l of eqLines) {
+    const i = l.indexOf("=");
+    const apres = cleanCell(l.slice(0, i)), note = cleanCell(l.slice(i + 1));
+    if (!apres) continue;
+    const ex = examples.find(e => e.toLowerCase().includes(apres.toLowerCase())) || examples[0] || "";
+    out.push({ avant: "", apres, note, exemple: ex });
+  }
+  return out;
+}
+function pasteTableForm(prefill) {
+  tblCtx = prefill || { source: "", texteId: null };
+  openModal(`
+    <h2>Coller un tableau de corrections</h2>
+    <div class="hint-box">Deux formats acceptés :<br>• <b>Tableau</b> — <code>❌ | ✅</code> (+ en option <code>| explication | exemple</code>), une correction par ligne.<br>• <b>Prose</b> — <code>expression = sens</code> suivi de phrases d'exemple.</div>
+    <label class="field"><span>Tableau</span><textarea id="tblInput" class="big" placeholder="| être important à… | jouer un rôle important dans… |&#10;| être considéré | être pris en compte |"></textarea></label>
+    <div class="modal-actions">
+      <button class="btn primary" data-action="analyze-table">Analyser →</button>
+      <button class="btn ghost" data-action="cancel">Annuler</button>
+    </div>`);
+}
+function candReviewForm(cands) {
+  const rows = cands.map((c, i) => `
+    <div class="cand-row">
+      <label class="cand-chk"><input type="checkbox" id="cd_chk_${i}" checked></label>
+      <div class="cand-fields">
+        <div class="row" style="gap:8px;align-items:center">
+          <input type="text" id="cd_avant_${i}" value="${esc(c.avant)}" placeholder="à éviter" style="flex:1;min-width:0">
+          <span class="cand-arrow">➜</span>
+          <input type="text" id="cd_apres_${i}" value="${esc(c.apres)}" placeholder="mieux ✅" style="flex:1;min-width:0">
+        </div>
+        <div class="row" style="gap:8px">
+          <select id="cd_type_${i}" style="width:auto">${TYPES.map(tp => `<option value="${tp.v}">${tp.l}</option>`).join("")}</select>
+          <input type="text" id="cd_note_${i}" value="${esc(c.note)}" placeholder="explication (facultatif)" style="flex:1;min-width:0">
+        </div>
+        <input type="text" id="cd_ex_${i}" value="${esc(c.exemple)}" placeholder="exemple (facultatif)" style="width:100%">
+      </div>
+    </div>`).join("");
+  openModal(`
+    <h2>${cands.length} correction${cands.length > 1 ? "s" : ""} détectée${cands.length > 1 ? "s" : ""}</h2>
+    <p class="muted" style="font-size:.9rem;margin:.2rem 0 0">Décoche celles à écarter, ajuste et choisis le type.</p>
+    <div class="modal-scroll">${rows}</div>
+    <div class="modal-actions">
+      <button class="btn primary" data-action="save-cands" data-count="${cands.length}">Ajouter les cartes cochées</button>
+      <button class="btn ghost" data-action="cancel">Annuler</button>
+    </div>`);
+}
+function saveCands(count) {
+  let n = 0;
+  for (let i = 0; i < count; i++) {
+    const chk = $("#cd_chk_" + i); if (!chk || !chk.checked) continue;
+    const apres = $("#cd_apres_" + i).value.trim(); if (!apres) continue;
+    store.cartes.push({ id: uid(), tipo: $("#cd_type_" + i).value, avant: $("#cd_avant_" + i).value.trim(), apres, note: $("#cd_note_" + i).value.trim(), exemple: $("#cd_ex_" + i).value.trim(), source: tblCtx.source || "", tags: [], texteId: tblCtx.texteId || null, cree: todayISO(), srs: newSrs() });
+    n++;
+  }
+  if (!n) { alert("Aucune carte cochée."); return; }
+  save(); closeModal(); toast(n + " carte" + (n > 1 ? "s" : "") + " ajoutée" + (n > 1 ? "s" : "") + " ✔");
+  if (ui.tab === "cartes") render();
+}
+
+/* ============================================================
+   Export / Import
+   ============================================================ */
+function doExport() {
+  const blob = new Blob([JSON.stringify(store, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tcf-journal-" + todayISO() + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("Exporté ✔");
+}
+function handleImport(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.textes || !data.cartes) throw new Error("format");
+      if (confirm("Remplacer toutes les données actuelles par ce fichier ?")) {
+        store = data; save(); render(); toast("Importé ✔");
+      }
+    } catch (e) { alert("Fichier JSON invalide."); }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   Actions (délégation d'événements)
+   ============================================================ */
+document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) setTab(b.dataset.tab); });
+
+document.body.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const a = el.dataset.action, id = el.dataset.id;
+
+  switch (a) {
+    case "new-texte": stopTimer(); ui.session = newSession(); ui.tab = "sentrainer"; render(); break;
+    case "edit-texte": startEdit(id); break;
+    case "del-texte": if (confirm("Supprimer ce texte ?")) { store.textes = store.textes.filter(t => t.id !== id); save(); render(); } break;
+    case "carte-from": { const t = store.textes.find(t => t.id === id); carteForm(null, { source: sourceLabel(t), texteId: t.id }); break; }
+    case "paste-from": { const t = store.textes.find(t => t.id === id); pasteTableForm({ source: sourceLabel(t), texteId: t.id }); break; }
+    case "paste-table": pasteTableForm({ source: "", texteId: null }); break;
+    case "analyze-table": { const raw = $("#tblInput").value; let cands = parseTable(raw); if (!cands.length) cands = parseExpressions(raw); if (!cands.length) { alert("Aucune correction détectée. Formats acceptés : tableau ❌ | ✅, ou « expression = sens » suivi d'exemples."); break; } candReviewForm(cands); break; }
+    case "save-cands": saveCands(Number(el.dataset.count)); break;
+    case "comb-prev": combShift(-1); break;
+    case "comb-next": combShift(1); break;
+
+    case "setup-mode": ui.session.timerMode = el.dataset.mode; renderSentrainer(); break;
+    case "session-write": startWriting(); break;
+    case "timer-mode": ui.session.timerMode = el.dataset.mode; document.querySelectorAll("[data-action='timer-mode']").forEach(b => b.classList.toggle("on", b.dataset.mode === el.dataset.mode)); updateTimer(); break;
+    case "toggle-consigne": { const cr = $("#consigneRef"); if (cr) cr.style.display = cr.style.display === "none" ? "" : "none"; break; }
+    case "session-finish": finishWriting(); break;
+    case "session-save": saveSession(); break;
+    case "session-cancel": cancelSession(); break;
+
+    case "new-carte": carteForm(null); break;
+    case "edit-carte": carteForm(store.cartes.find(c => c.id === id)); break;
+    case "del-carte": if (confirm("Supprimer cette carte ?")) { store.cartes = store.cartes.filter(c => c.id !== id); save(); render(); } break;
+    case "save-carte": saveCarte(id, el.dataset.texte); break;
+    case "carte-prev": carteNav(-1); break;
+    case "carte-next": carteNav(1); break;
+
+    case "review-start": ui.review = { queue: shuffle(store.cartes.filter(isDue)), idx: 0, done: 0 }; ui.flipped = false; render(); break;
+    case "review-all": ui.review = { queue: shuffle(store.cartes.slice()), idx: 0, done: 0 }; ui.flipped = false; render(); break;
+    case "review-restart": ui.review = null; render(); break;
+    case "flip": ui.flipped = !ui.flipped; renderReviser(); break;
+
+    case "export": doExport(); break;
+    case "import": $("#importFile").click(); break;
+    case "reset": if (confirm("Effacer TOUTES les données de ce navigateur ? (pense à exporter d'abord)")) { localStorage.removeItem(KEY); store = { textes: [], cartes: [] }; render(); } break;
+
+    case "cancel": closeModal(); break;
+  }
+});
+
+// clic sur l'arrière-plan du modal → fermer
+document.body.addEventListener("mousedown", e => { if (e.target.dataset && e.target.dataset.overlay !== undefined) closeModal(); });
+
+// notes de la session de révision
+document.body.addEventListener("click", e => {
+  const g = e.target.closest("[data-grade]");
+  if (!g || !ui.review) return;
+  gradeCard(Number(g.dataset.grade));
+});
+
+// navigation au clavier
+document.addEventListener("keydown", e => {
+  if ($("#modalRoot").innerHTML) return;                       // pas pendant un formulaire
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  const k = e.key;
+  if (ui.tab === "cartes") {
+    if (k === "ArrowRight") { e.preventDefault(); carteNav(1); }
+    else if (k === "ArrowLeft") { e.preventDefault(); carteNav(-1); }
+  } else if (ui.tab === "textes" && ui.search.trim() === "") {
+    if (k === "ArrowRight") { e.preventDefault(); combShift(1); }
+    else if (k === "ArrowLeft") { e.preventDefault(); combShift(-1); }
+  } else if (ui.tab === "reviser" && ui.review) {
+    if (!ui.flipped) {
+      if (k === " " || k === "Enter" || k === "ArrowRight") { e.preventDefault(); ui.flipped = true; renderReviser(); }
+    } else {
+      const map = { "1": 0, "2": 3, "3": 4, "4": 5 };
+      if (k in map) { e.preventDefault(); gradeCard(map[k]); }
+    }
+  }
+});
+
+window.addEventListener("resize", () => { if (ui.tab === "sentrainer" && ui.session && ui.session.phase === "write") sizeWriteView(); });
+
+function gradeCard(q) {
+  const c = ui.review.queue[ui.review.idx];
+  c.srs = schedule(c.srs || newSrs(), q);
+  ui.review.done++;
+  if (q < 3) ui.review.queue.push(c);   // « Encore » : revoir en fin de session
+  ui.review.idx++;
+  ui.flipped = false;
+  save();
+  renderReviser();
+}
+
+function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+function saveCarte(id, texteId) {
+  const data = {
+    tipo: $("#c_tipo").value,
+    avant: $("#c_avant").value.trim(),
+    apres: $("#c_apres").value.trim(),
+    note: $("#c_note").value.trim(),
+    exemple: $("#c_exemple").value.trim(),
+    source: $("#c_source").value.trim(),
+    tags: $("#c_tags").value.split(",").map(s => s.trim()).filter(Boolean)
+  };
+  if (!data.apres) { alert("La forme correcte est obligatoire."); return; }
+  if (id) { const c = store.cartes.find(c => c.id === id); Object.assign(c, data); }
+  else { store.cartes.push(Object.assign({ id: uid(), texteId: texteId || null, cree: todayISO(), srs: newSrs() }, data)); }
+  save(); closeModal(); toast("Carte enregistrée ✔");
+  if (ui.tab === "cartes") render();
+}
+
+/* démarrage */
+render();
+</script>
+</body>
+</html>
