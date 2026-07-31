@@ -303,8 +303,15 @@ const TYPES = [
 const typeLabel = v => (TYPES.find(t => t.v === v) || { l: v }).l;
 
 const KEY = "tcf-ecrit-journal-v1";
+const SYNC_KEY = "tcf-ecrit-journal-sync";
 let store = load();
 let tblCtx = { source: "", texteId: null };   // contexte du dernier « coller un tableau »
+let syncCfg = loadSyncCfg();                    // { enabled, keyHash }
+let syncState = "off";                           // off | pending | ok | error
+let pushTimer = null;
+
+function loadSyncCfg() { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || { enabled: false, keyHash: "" }; } catch (e) { return { enabled: false, keyHash: "" }; } }
+function saveSyncCfg() { localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }
 
 function load() {
   try {
@@ -315,7 +322,75 @@ function load() {
   localStorage.setItem(KEY, JSON.stringify(seeded));
   return seeded;
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(store)); updateDueBadge(); }
+function writeLocal() { localStorage.setItem(KEY, JSON.stringify(store)); updateDueBadge(); }
+function save() { store.updatedAt = Date.now(); writeLocal(); schedulePush(); }
+
+/* ---------- Synchronisation cloud (optionnelle) ---------- */
+async function sha256hex(str) {
+  if (window.crypto && crypto.subtle) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return "fb" + h.toString(16).padStart(8, "0") + str.length;
+}
+function setSyncState(s) { syncState = s; const el = $("#syncStateChip"); if (el) el.textContent = syncBadge() || "☁️ activée"; }
+function syncBadge() {
+  if (!syncCfg.enabled) return "";
+  return { pending: "⏳ synchronisation…", ok: "☁️ synchronisé", error: "⚠️ erreur de synchro", off: "" }[syncState] || "";
+}
+function schedulePush() {
+  if (!syncCfg.enabled) return;
+  setSyncState("pending");
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushRemote, 1200);
+}
+async function pushRemote() {
+  if (!syncCfg.enabled) return;
+  setSyncState("pending");
+  try {
+    const r = await fetch("/api/data", { method: "PUT", headers: { "Content-Type": "application/json", "x-sync-key": syncCfg.keyHash }, body: JSON.stringify({ data: store }) });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    setSyncState("ok");
+  } catch (e) { setSyncState("error"); }
+}
+async function fetchRemote() {
+  const r = await fetch("/api/data", { headers: { "x-sync-key": syncCfg.keyHash } });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return (await r.json()).data;
+}
+async function initialSync() {
+  if (!syncCfg.enabled) return;
+  setSyncState("pending");
+  try {
+    const remote = await fetchRemote();
+    if (remote && (remote.updatedAt || 0) > (store.updatedAt || 0)) { store = remote; writeLocal(); render(); }
+    else await pushRemote();
+    setSyncState("ok");
+  } catch (e) { setSyncState("error"); }
+}
+async function enableSync(passphrase) {
+  const pass = (passphrase || "").trim();
+  if (pass.length < 6) { alert("Choisis un mot de passe d'au moins 6 caractères."); return; }
+  const keyHash = await sha256hex(pass);
+  syncCfg = { enabled: true, keyHash };
+  saveSyncCfg();
+  setSyncState("pending");
+  try {
+    const remote = await fetchRemote();
+    if (remote && Array.isArray(remote.textes)) {
+      if (confirm("Des données existent déjà dans le cloud pour ce mot de passe.\n\nOK = charger le cloud ici (remplace le local).\nAnnuler = envoyer le local vers le cloud (écrase le cloud).")) {
+        store = remote; writeLocal();
+      } else { await pushRemote(); }
+    } else { await pushRemote(); }
+    setSyncState("ok");
+    toast("Synchro activée ☁️");
+  } catch (e) { setSyncState("error"); alert("Impossible de contacter le cloud. Vérifie ta connexion ou la configuration."); }
+  render();
+}
+function disableSync() {
+  syncCfg = { enabled: false, keyHash: "" }; saveSyncCfg(); setSyncState("off"); render();
+}
 
 /* ---------- utilitaires ---------- */
 const $ = sel => document.querySelector(sel);
@@ -809,10 +884,26 @@ function combShift(delta) { const n = monthCombos().length; if (!n) return; ui.c
 
 /* ---------- Onglet Données ---------- */
 function renderDonnees() {
+  const syncOn = syncCfg.enabled;
   app().innerHTML = `
     <div class="card">
-      <h3>Sauvegarde & synchronisation</h3>
-      <p class="muted" style="font-size:.9rem">Tes données sont stockées dans ce navigateur. Exporte régulièrement un fichier JSON pour ne rien perdre (et le garder dans ton dépôt privé si tu veux).</p>
+      <h3>☁️ Synchronisation cloud</h3>
+      ${syncOn ? `
+      <p class="muted" style="font-size:.9rem">Tes données se sauvegardent automatiquement dans le cloud. Tu peux les retrouver sur n'importe quel appareil avec ton mot de passe.</p>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <span class="chip" id="syncStateChip">${syncBadge() || "☁️ activée"}</span>
+        <div class="spacer"></div>
+        <button class="btn" data-action="sync-now">Synchroniser maintenant</button>
+        <button class="btn ghost" data-action="sync-disable">Désactiver</button>
+      </div>`
+      : `
+      <p class="muted" style="font-size:.9rem">Active la synchro pour ne jamais perdre tes données et y accéder depuis d'autres appareils. Choisis un <b>mot de passe</b> : c'est la clé de tes données, note-le bien (il ne peut pas être récupéré).</p>
+      <label class="field"><span>Mot de passe de synchronisation</span><input type="password" id="syncPass" placeholder="au moins 6 caractères"></label>
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-action="sync-enable">Activer la synchronisation</button></div>`}
+    </div>
+    <div class="card">
+      <h3>Sauvegarde manuelle (JSON)</h3>
+      <p class="muted" style="font-size:.9rem">Un fichier de secours, en plus de la synchro. Utile pour archiver ou transférer.</p>
       <div class="row" style="margin-top:12px">
         <button class="btn primary" data-action="export">⬇️ Exporter (JSON)</button>
         <button class="btn" data-action="import">⬆️ Importer (JSON)</button>
@@ -1061,6 +1152,9 @@ document.body.addEventListener("click", e => {
     case "review-restart": ui.review = null; render(); break;
     case "flip": ui.flipped = !ui.flipped; renderReviser(); break;
 
+    case "sync-enable": enableSync($("#syncPass").value); break;
+    case "sync-disable": if (confirm("Désactiver la synchro sur cet appareil ? Tes données restent dans le cloud et en local.")) disableSync(); break;
+    case "sync-now": initialSync(); break;
     case "export": doExport(); break;
     case "import": $("#importFile").click(); break;
     case "reset": if (confirm("Effacer TOUTES les données de ce navigateur ? (pense à exporter d'abord)")) { localStorage.removeItem(KEY); store = { textes: [], cartes: [] }; render(); } break;
@@ -1135,6 +1229,7 @@ function saveCarte(id, texteId) {
 
 /* démarrage */
 render();
+if (syncCfg.enabled) initialSync();
 </script>
 </body>
 </html>
