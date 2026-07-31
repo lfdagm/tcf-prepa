@@ -590,7 +590,7 @@ function renderWrite() {
         ${s.consigne ? `<button type="button" class="btn ghost sm" data-action="toggle-consigne">👁 Consigne</button>` : ""}
       </div>
       ${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : ""}
-      <textarea id="writeArea" class="write-area" placeholder="Écris ici ta réponse à la consigne…">${esc(s.original)}</textarea>
+      <textarea id="writeArea" class="write-area" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" placeholder="Écris ici ta réponse à la consigne…">${esc(s.original)}</textarea>
       <div class="write-foot">
         <span class="muted"><b id="wcWords">0</b> mots · <b id="wcChars">0</b> caractères</span>
         <div class="spacer"></div>
