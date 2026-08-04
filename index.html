@@ -325,11 +325,13 @@ const typeLabel = v => (TYPES.find(t => t.v === v) || { l: v }).l;
 
 // Prompt standard à donner à ChatGPT : renvoie un tableau que l'app importe directement,
 // avec une colonne « Catégorie » qui classe chaque correction (→ cartes + Bilan).
-const STD_PROMPT = `Corrige mon texte (ou ma transcription orale) pour le TCF.
-Donne UNIQUEMENT un tableau Markdown, une ligne par correction, avec exactement cet en-tête :
+const STD_PROMPT = `Agis comme un examinateur du TCF. Évalue et corrige mon texte (ou ma transcription orale).
+1) Sur la toute première ligne, donne une note estimée sur 20 et le niveau CECR, exactement ainsi :
+Note : 14/20 (B2)
+2) Ensuite, UNIQUEMENT un tableau Markdown, une ligne par correction, avec exactement cet en-tête :
 | Catégorie | ❌ À éviter | ✅ Mieux | Explication courte | Exemple correct |
 La colonne Catégorie doit être l'une de : expression, conjugaison, grammaire, préposition, vocabulaire, connecteur, orthographe.
-N'ajoute aucun texte avant ou après le tableau.`;
+N'ajoute rien d'autre.`;
 
 const KEY = "tcf-ecrit-journal-v1";
 const SYNC_KEY = "tcf-ecrit-journal-sync";
@@ -505,6 +507,11 @@ function sourceLabel(t) {
   if (t.combinaison != null && String(t.combinaison).trim() !== "") return `Combinaison ${t.combinaison} · ${moisLabel(t.mois)} ${t.annee}`;
   return t.source || "";
 }
+function hasScore(x) { return x && x.score != null && String(x.score).trim() !== ""; }
+function scoreChip(x) {
+  if (!hasScore(x)) return "";
+  return `<span class="chip" style="background:var(--success-soft);color:var(--success);border-color:var(--success-border)">🎯 ${esc(String(x.score))}/20${x.niveau ? " · " + esc(x.niveau) : ""}</span>`;
+}
 
 function setTab(t) {
   if (ui.session && ui.session.phase === "write" && ui.tab === "sentrainer" && t !== "sentrainer") {
@@ -535,7 +542,7 @@ function render() {
 
 /* ---------- Onglet S'entraîner (écriture + timer) ---------- */
 function newSession() {
-  return { phase: "setup", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", consigne: "", original: "", corrige: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, tempsSec: 0 };
+  return { phase: "setup", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", consigne: "", original: "", corrige: "", score: "", niveau: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, tempsSec: 0 };
 }
 function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
 function startTimer() {
@@ -666,6 +673,10 @@ function renderEditor() {
       <label class="field"><span>Consigne</span><textarea id="e_consigne">${esc(s.consigne)}</textarea></label>
       <label class="field"><span>Ma version <span class="muted" id="e_wc1"></span></span><textarea id="e_original" class="big">${esc(s.original)}</textarea></label>
       <label class="field"><span>Version corrigée — colle la correction de ChatGPT <span class="muted" id="e_wc2"></span></span><textarea id="e_corrige" class="big" placeholder="Colle ici la version corrigée…">${esc(s.corrige)}</textarea></label>
+      <div class="row">
+        <label class="field" style="flex:1"><span>Note estimée (sur 20)</span><input type="text" inputmode="decimal" id="e_score" value="${esc(String(s.score ?? ""))}" placeholder="ex. 14"></label>
+        <label class="field" style="flex:1"><span>Niveau CECR (facultatif)</span><input type="text" id="e_niveau" value="${esc(s.niveau || "")}" placeholder="ex. B2"></label>
+      </div>
       <div id="e_preview"></div>
       <div class="modal-actions">
         <button class="btn primary" data-action="session-save">${isEdit ? "Enregistrer" : (s.corrige ? "Enregistrer" : "Enregistrer (correction plus tard)")}</button>
@@ -766,6 +777,7 @@ function renderTextes() {
         <div class="meta">
           <span class="chip t${t.tache}">Tâche ${t.tache}</span>
           ${sourceLabel(t) ? `<span class="chip">${esc(sourceLabel(t))}</span>` : ""}
+          ${scoreChip(t)}
           <span class="muted" style="font-size:.82rem">${fmtDate(t.date)}</span>
           ${t.tempsSec ? `<span class="muted" style="font-size:.82rem">⏱ ${fmtClock(t.tempsSec)}</span>` : ""}
           <div class="spacer"></div>
@@ -882,6 +894,7 @@ function renderOral() {
         <div class="meta">
           <span class="chip t${o.tache}">Tâche ${o.tache}</span>
           ${oralLabel(o) ? `<span class="chip">${esc(oralLabel(o))}</span>` : ""}
+          ${scoreChip(o)}
           <span class="muted" style="font-size:.82rem">${fmtDate(o.date)}</span>
           <div class="spacer"></div>
           <button class="btn ghost sm" data-action="edit-oral" data-id="${o.id}">Modifier</button>
@@ -912,7 +925,7 @@ function renderOral() {
 }
 
 function oralForm(o) {
-  const e = o || { tache: 1, annee: curYear(), mois: curMonth(), partie: "", consigne: "", transcription: "", corrige: "", note: "" };
+  const e = o || { tache: 1, annee: curYear(), mois: curMonth(), partie: "", consigne: "", transcription: "", corrige: "", score: "", niveau: "", note: "" };
   openModal(`
     <h2>${o ? "Modifier la pratique orale" : "Nouvelle pratique orale"}</h2>
     <div class="row" style="margin-top:6px">
@@ -926,6 +939,10 @@ function oralForm(o) {
     <label class="field"><span>Consigne</span><textarea id="o_consigne">${esc(e.consigne)}</textarea></label>
     <label class="field"><span>Transcription (ta réponse orale)</span><textarea id="o_transcription" class="big">${esc(e.transcription)}</textarea></label>
     <label class="field"><span>Version corrigée</span><textarea id="o_corrige" class="big">${esc(e.corrige)}</textarea></label>
+    <div class="row">
+      <label class="field" style="flex:1"><span>Note estimée (sur 20)</span><input type="text" inputmode="decimal" id="o_score" value="${esc(String(e.score ?? ""))}" placeholder="ex. 13"></label>
+      <label class="field" style="flex:1"><span>Niveau CECR (facultatif)</span><input type="text" id="o_niveau" value="${esc(e.niveau || "")}" placeholder="ex. B1"></label>
+    </div>
     <label class="field"><span>Remarque (facultatif)</span><textarea id="o_note">${esc(e.note)}</textarea></label>
     <div class="modal-actions">
       <button class="btn primary" data-action="save-oral" data-id="${o ? o.id : ""}">Enregistrer</button>
@@ -941,6 +958,8 @@ function saveOral(id) {
     consigne: $("#o_consigne").value.trim(),
     transcription: $("#o_transcription").value,
     corrige: $("#o_corrige").value,
+    score: $("#o_score").value.trim(),
+    niveau: $("#o_niveau").value.trim(),
     note: $("#o_note").value.trim()
   };
   if (!data.transcription.trim() && !data.corrige.trim()) { alert("Ajoute au moins la transcription ou la correction."); return; }
@@ -968,6 +987,15 @@ function renderBilan() {
       <div class="stat"><div class="n">${store.oraux.length}</div><div class="l">oraux</div></div>
       <div class="stat"><div class="n">${cards.length}</div><div class="l">cartes</div></div>
     </div>`;
+  const avg = arr => { const v = arr.filter(hasScore).map(x => parseFloat(String(x.score).replace(",", "."))).filter(n => !isNaN(n)); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; };
+  const avgE = avg(store.textes), avgO = avg(store.oraux);
+  if (avgE != null || avgO != null) {
+    html += `<div class="card"><h3>Note estimée moyenne <span class="muted" style="font-weight:400">· sur 20</span></h3>
+      <div class="stat-grid">
+        <div class="stat"><div class="n">${avgE != null ? avgE : "—"}</div><div class="l">écrit</div></div>
+        <div class="stat"><div class="n">${avgO != null ? avgO : "—"}</div><div class="l">oral</div></div>
+      </div></div>`;
+  }
   if (!cards.length) {
     html += `<div class="empty"><div class="big">📊</div><p>Pas encore de cartes.<br>Ajoute des corrections (écrit ou oral) pour voir tes thèmes à travailler.</p></div>`;
     app().innerHTML = html; return;
@@ -1155,7 +1183,7 @@ function finishWriting() {
 function startEdit(id) {
   const t = store.textes.find(x => x.id === id); if (!t) return;
   stopTimer();
-  ui.session = { phase: "correct", editingId: id, tache: t.tache, annee: t.annee || curYear(), mois: t.mois || curMonth(), combinaison: t.combinaison ?? "", consigne: t.consigne || "", original: t.original || "", corrige: t.corrige || "", timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0 };
+  ui.session = { phase: "correct", editingId: id, tache: t.tache, annee: t.annee || curYear(), mois: t.mois || curMonth(), combinaison: t.combinaison ?? "", consigne: t.consigne || "", original: t.original || "", corrige: t.corrige || "", score: t.score ?? "", niveau: t.niveau || "", timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0 };
   ui.tab = "sentrainer"; render();
 }
 function saveSession() {
@@ -1164,8 +1192,10 @@ function saveSession() {
   s.consigne = ($("#e_consigne") || {}).value ?? s.consigne;
   s.original = ($("#e_original") || {}).value ?? s.original;
   s.corrige = ($("#e_corrige") || {}).value ?? s.corrige;
+  s.score = ($("#e_score") || {}).value ?? s.score;
+  s.niveau = ($("#e_niveau") || {}).value ?? s.niveau;
   if (!s.original.trim() && !s.corrige.trim()) { alert("Ajoute au moins ta version ou la correction."); return; }
-  const data = { tache: s.tache, annee: s.annee, mois: s.mois, combinaison: String(s.combinaison).trim(), consigne: s.consigne.trim(), original: s.original, corrige: s.corrige, tempsSec: s.tempsSec || 0 };
+  const data = { tache: s.tache, annee: s.annee, mois: s.mois, combinaison: String(s.combinaison).trim(), consigne: s.consigne.trim(), original: s.original, corrige: s.corrige, score: String(s.score).trim(), niveau: (s.niveau || "").trim(), tempsSec: s.tempsSec || 0 };
   if (s.editingId) { const t = store.textes.find(x => x.id === s.editingId); Object.assign(t, data); }
   else { store.textes.unshift(Object.assign({ id: uid(), date: todayISO() }, data)); }
   ui.session = null; save(); ui.tab = "textes"; render(); toast("Texte enregistré ✔");
