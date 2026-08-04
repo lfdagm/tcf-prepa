@@ -224,6 +224,11 @@
   .stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; text-align: center; }
   .stat .n { font-size: 1.6rem; font-weight: 700; }
   .stat .l { font-size: .78rem; color: var(--text-soft); }
+  .bilan-row { display: flex; align-items: center; gap: 10px; margin: 9px 0; }
+  .bilan-label { flex: 0 0 42%; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bilan-bar { flex: 1; height: 12px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
+  .bilan-bar span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+  .bilan-n { flex: 0 0 auto; font-weight: 700; font-size: .9rem; min-width: 22px; text-align: right; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: .9rem; font-weight: 600; box-shadow: var(--shadow-lg); z-index: 100; opacity: 0; transition: opacity var(--t); pointer-events: none; }
   .toast.show { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -236,9 +241,11 @@
     <p class="subtitle">TCF · mes textes, mes corrections et mes cartes à réviser</p>
     <nav class="tabs" id="tabs">
       <button class="tab" data-tab="sentrainer">✍️ S'entraîner</button>
-      <button class="tab" data-tab="textes">📝 Textes</button>
+      <button class="tab" data-tab="textes">📝 Écrit</button>
+      <button class="tab" data-tab="oral">🎤 Oral</button>
       <button class="tab" data-tab="cartes">🃏 Cartes</button>
       <button class="tab" data-tab="reviser">🔁 Réviser <span class="badge" id="dueBadge">0</span></button>
+      <button class="tab" data-tab="bilan">📊 Bilan</button>
       <button class="tab" data-tab="donnees">💾 Données</button>
     </nav>
   </header>
@@ -287,6 +294,20 @@ const SEED = {
       source: "Ayoub — Sujet exemple", tags: ["subjonctif", "aller"],
       texteId: "seed-t1", cree: "2026-07-30", srs: { due: "2026-07-30", interval: 0, ease: 2.5, reps: 0 }
     }
+  ],
+  oraux: [
+    {
+      id: "seed-o1",
+      date: "2026-07-31",
+      tache: 3,
+      annee: 2026,
+      mois: 7,
+      partie: "1",
+      consigne: "Tâche 3 : donnez votre point de vue sur les réseaux sociaux (monologue).",
+      transcription: "Pour moi, les réseaux sociaux il faut que on fait attention. Ils sont important dans notre vie.",
+      corrige: "Pour moi, en ce qui concerne les réseaux sociaux, il faut qu'on fasse attention. Ils jouent un rôle important dans notre vie.",
+      note: "Exemple oral de démonstration — modifiable ou supprimable."
+    }
   ]
 };
 
@@ -302,10 +323,18 @@ const TYPES = [
 ];
 const typeLabel = v => (TYPES.find(t => t.v === v) || { l: v }).l;
 
+// Prompt standard à donner à ChatGPT : renvoie un tableau que l'app importe directement,
+// avec une colonne « Catégorie » qui classe chaque correction (→ cartes + Bilan).
+const STD_PROMPT = `Corrige mon texte (ou ma transcription orale) pour le TCF.
+Donne UNIQUEMENT un tableau Markdown, une ligne par correction, avec exactement cet en-tête :
+| Catégorie | ❌ À éviter | ✅ Mieux | Explication courte | Exemple correct |
+La colonne Catégorie doit être l'une de : expression, conjugaison, grammaire, préposition, vocabulaire, connecteur, orthographe.
+N'ajoute aucun texte avant ou après le tableau.`;
+
 const KEY = "tcf-ecrit-journal-v1";
 const SYNC_KEY = "tcf-ecrit-journal-sync";
 let store = load();
-let tblCtx = { source: "", texteId: null };   // contexte du dernier « coller un tableau »
+let tblCtx = { source: "", texteId: null, oralId: null };   // contexte du dernier « coller un tableau »
 let syncCfg = loadSyncCfg();                    // { enabled, keyHash }
 let syncState = "off";                           // off | pending | ok | error
 let pushTimer = null;
@@ -313,12 +342,19 @@ let pushTimer = null;
 function loadSyncCfg() { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || { enabled: false, keyHash: "" }; } catch (e) { return { enabled: false, keyHash: "" }; } }
 function saveSyncCfg() { localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }
 
+function normalizeStore(s) {
+  if (!s || typeof s !== "object") s = {};
+  if (!Array.isArray(s.textes)) s.textes = [];
+  if (!Array.isArray(s.cartes)) s.cartes = [];
+  if (!Array.isArray(s.oraux)) s.oraux = [];
+  return s;
+}
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return normalizeStore(JSON.parse(raw));
   } catch (e) {}
-  const seeded = { textes: JSON.parse(JSON.stringify(SEED.textes)), cartes: JSON.parse(JSON.stringify(SEED.cartes)) };
+  const seeded = normalizeStore({ textes: JSON.parse(JSON.stringify(SEED.textes)), cartes: JSON.parse(JSON.stringify(SEED.cartes)), oraux: JSON.parse(JSON.stringify(SEED.oraux || [])) });
   localStorage.setItem(KEY, JSON.stringify(seeded));
   return seeded;
 }
@@ -456,7 +492,7 @@ function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = due
 /* ============================================================
    État de l'interface
    ============================================================ */
-let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0 };
+let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0 };
 const DUREE_DEFAUT = { 1: 15, 2: 20, 3: 25 };   // minutes indicatives par tâche (TCF ≈ 60 min au total)
 let timerInterval = null;
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -490,8 +526,10 @@ function render() {
   if (!writing) stopTimer();
   if (ui.tab === "sentrainer") renderSentrainer();
   else if (ui.tab === "textes") renderTextes();
+  else if (ui.tab === "oral") renderOral();
   else if (ui.tab === "reviser") renderReviser();
   else if (ui.tab === "cartes") renderCartes();
+  else if (ui.tab === "bilan") renderBilan();
   else renderDonnees();
 }
 
@@ -767,6 +805,178 @@ function renderTextes() {
   if (ms) ms.addEventListener("change", e => { const [y, m] = e.target.value.split("-").map(Number); ui.periodY = y; ui.periodM = m; ui.combIdx = 0; renderTextes(); });
 }
 
+/* ---------- Onglet Oral ---------- */
+function oralLabel(o) { if (o.partie != null && String(o.partie).trim() !== "") return `Partie ${o.partie} · ${moisLabel(o.mois)} ${o.annee}`; return ""; }
+function oralParts() { const mt = store.oraux.filter(o => Number(o.annee) === ui.oPeriodY && Number(o.mois) === ui.oPeriodM); return [...new Set(mt.map(o => String(o.partie ?? "")))]; }
+function partShift(delta) { const n = oralParts().length; if (!n) return; ui.oPartIdx = (ui.oPartIdx + delta + n) % n; renderOral(); }
+
+function renderOral() {
+  const searching = ui.search.trim() !== "";
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const monthMap = new Map();
+  for (const o of store.oraux) {
+    if (!o.annee || !o.mois) continue;
+    const key = o.annee + "-" + o.mois;
+    if (!monthMap.has(key)) monthMap.set(key, new Set());
+    monthMap.get(key).add(String(o.partie ?? ""));
+  }
+  const selKey = ui.oPeriodY + "-" + ui.oPeriodM;
+  const months = [...monthMap.entries()].map(([k, set]) => { const [y, m] = k.split("-").map(Number); return { y, m, key: k, n: set.size }; });
+  if (!monthMap.has(selKey)) months.push({ y: ui.oPeriodY, m: ui.oPeriodM, key: selKey, n: 0 });
+  months.sort((a, b) => b.y - a.y || b.m - a.m);
+
+  const monthEntries = store.oraux.filter(o => Number(o.annee) === ui.oPeriodY && Number(o.mois) === ui.oPeriodM);
+  const parts = [...new Set(monthEntries.map(o => String(o.partie ?? "")))].sort((a, b) => (Number(a) || 0) - (Number(b) || 0));
+  if (ui.oPartIdx >= parts.length) ui.oPartIdx = 0;
+  if (ui.oPartIdx < 0) ui.oPartIdx = Math.max(0, parts.length - 1);
+  const curPart = parts[ui.oPartIdx];
+
+  let list;
+  if (searching) {
+    const q = ui.search.toLowerCase();
+    list = store.oraux.filter(o => [oralLabel(o), o.consigne, o.transcription, o.corrige].join(" ").toLowerCase().includes(q));
+    list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  } else {
+    list = monthEntries.filter(o => String(o.partie ?? "") === curPart);
+    list.sort((a, b) => a.tache - b.tache);
+  }
+  if (ui.tFilter !== "all") list = list.filter(o => String(o.tache) === ui.tFilter);
+
+  const monthOpts = months.map(o => `<option value="${o.key}"${o.key === selKey ? " selected" : ""}>${cap(moisLabel(o.m))} ${o.y} — ${o.n} partie${o.n > 1 ? "s" : ""}</option>`).join("");
+
+  let html = `
+    <div class="row filters">
+      <select id="oMonthSel" style="flex:1;min-width:180px">${monthOpts}</select>
+      <select id="oTFilter">
+        <option value="all"${ui.tFilter === "all" ? " selected" : ""}>Toutes les tâches</option>
+        <option value="1"${ui.tFilter === "1" ? " selected" : ""}>Tâche 1</option>
+        <option value="2"${ui.tFilter === "2" ? " selected" : ""}>Tâche 2</option>
+        <option value="3"${ui.tFilter === "3" ? " selected" : ""}>Tâche 3</option>
+      </select>
+      <input class="search" id="oSearch" type="text" placeholder="Rechercher partout…" value="${esc(ui.search)}">
+      <div class="spacer"></div>
+      <button class="btn primary" data-action="new-oral">+ Pratique orale</button>
+    </div>
+    ${searching ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">🔎 Recherche sur tous les mois.</p>`
+      : (parts.length ? `
+    <div class="period-bar">
+      <button class="btn sm" data-action="part-prev" aria-label="Partie précédente">‹</button>
+      <div class="period-label">Partie ${esc(curPart || "—")} <span class="muted">· ${ui.oPartIdx + 1} / ${parts.length}</span></div>
+      <button class="btn sm" data-action="part-next" aria-label="Partie suivante">›</button>
+    </div>
+    <div class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> changer de partie</div>` : "")}`;
+
+  if (!list.length) {
+    let msg;
+    if (searching) msg = "Aucun résultat pour cette recherche.";
+    else if (!parts.length) msg = `Aucune pratique orale en <b>${cap(moisLabel(ui.oPeriodM))} ${ui.oPeriodY}</b>.<br>Ajoute-en une avec <b>+ Pratique orale</b>.`;
+    else msg = `Aucune Tâche ${ui.tFilter} dans la partie ${esc(curPart)}.`;
+    html += `<div class="empty"><div class="big">🎤</div><p>${msg}</p></div>`;
+  } else {
+    for (const o of list) {
+      const hasCorr = (o.corrige || "").trim().length > 0;
+      const sides = diffSides(o.transcription, o.corrige);
+      html += `
+      <div class="card">
+        <div class="meta">
+          <span class="chip t${o.tache}">Tâche ${o.tache}</span>
+          ${oralLabel(o) ? `<span class="chip">${esc(oralLabel(o))}</span>` : ""}
+          <span class="muted" style="font-size:.82rem">${fmtDate(o.date)}</span>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" data-action="edit-oral" data-id="${o.id}">Modifier</button>
+          <button class="btn ghost sm" data-action="paste-from-oral" data-id="${o.id}">＋ Cartes</button>
+          <button class="btn ghost sm" data-action="del-oral" data-id="${o.id}">Suppr.</button>
+        </div>
+        ${o.consigne ? `<div class="consigne">${esc(o.consigne)}</div>` : ""}
+        ${hasCorr ? `
+        <div class="sbs">
+          <div class="col"><div class="col-head"><span>Transcription</span><span class="wc">${countWords(o.transcription)} mots</span></div><div class="texte-body">${sides.left}</div></div>
+          <div class="col corr"><div class="col-head"><span>Version corrigée</span><span class="wc">${countWords(o.corrige)} mots</span></div><div class="texte-body">${sides.right}</div></div>
+        </div>
+        <div class="diff-legend"><span class="k"><span class="dot" style="background:var(--del-bg)"></span> retiré</span><span class="k"><span class="dot" style="background:var(--ins-bg)"></span> ajouté / corrigé</span></div>`
+        : `
+        <div class="col" style="margin-top:12px"><div class="col-head"><span>Transcription</span><span class="wc">${countWords(o.transcription)} mots</span></div><div class="texte-body">${esc(o.transcription)}</div></div>
+        <div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-oral" data-id="${o.id}">＋ Ajouter la correction</button></div>`}
+        ${o.note ? `<p class="muted" style="font-size:.88rem;margin:10px 0 0">🗒️ ${esc(o.note)}</p>` : ""}
+      </div>`;
+    }
+  }
+  app().innerHTML = html;
+  const si = $("#oSearch");
+  if (si) si.addEventListener("input", e => { ui.search = e.target.value; ui.oPartIdx = 0; const p = si.selectionStart; renderOral(); const s2 = $("#oSearch"); s2.focus(); s2.setSelectionRange(p, p); });
+  const tf = $("#oTFilter");
+  if (tf) tf.addEventListener("change", e => { ui.tFilter = e.target.value; renderOral(); });
+  const ms = $("#oMonthSel");
+  if (ms) ms.addEventListener("change", e => { const [y, m] = e.target.value.split("-").map(Number); ui.oPeriodY = y; ui.oPeriodM = m; ui.oPartIdx = 0; renderOral(); });
+}
+
+function oralForm(o) {
+  const e = o || { tache: 1, annee: curYear(), mois: curMonth(), partie: "", consigne: "", transcription: "", corrige: "", note: "" };
+  openModal(`
+    <h2>${o ? "Modifier la pratique orale" : "Nouvelle pratique orale"}</h2>
+    <div class="row" style="margin-top:6px">
+      <label class="field" style="flex:1"><span>Tâche</span><select id="o_tache"><option value="1"${e.tache == 1 ? " selected" : ""}>Tâche 1</option><option value="2"${e.tache == 2 ? " selected" : ""}>Tâche 2</option><option value="3"${e.tache == 3 ? " selected" : ""}>Tâche 3</option></select></label>
+      <label class="field" style="flex:1"><span>Partie</span><input type="text" inputmode="numeric" id="o_partie" value="${esc(String(e.partie ?? ""))}" placeholder="ex. 1"></label>
+    </div>
+    <div class="row">
+      <label class="field" style="flex:2"><span>Mois</span><select id="o_mois">${MOIS.map((m, i) => `<option value="${i + 1}"${e.mois == i + 1 ? " selected" : ""}>${m}</option>`).join("")}</select></label>
+      <label class="field" style="flex:1"><span>Année</span><select id="o_annee">${anneesList().map(a => `<option value="${a}"${e.annee == a ? " selected" : ""}>${a}</option>`).join("")}</select></label>
+    </div>
+    <label class="field"><span>Consigne</span><textarea id="o_consigne">${esc(e.consigne)}</textarea></label>
+    <label class="field"><span>Transcription (ta réponse orale)</span><textarea id="o_transcription" class="big">${esc(e.transcription)}</textarea></label>
+    <label class="field"><span>Version corrigée</span><textarea id="o_corrige" class="big">${esc(e.corrige)}</textarea></label>
+    <label class="field"><span>Remarque (facultatif)</span><textarea id="o_note">${esc(e.note)}</textarea></label>
+    <div class="modal-actions">
+      <button class="btn primary" data-action="save-oral" data-id="${o ? o.id : ""}">Enregistrer</button>
+      <button class="btn ghost" data-action="cancel">Annuler</button>
+    </div>`);
+}
+function saveOral(id) {
+  const data = {
+    tache: Number($("#o_tache").value),
+    annee: Number($("#o_annee").value),
+    mois: Number($("#o_mois").value),
+    partie: $("#o_partie").value.trim(),
+    consigne: $("#o_consigne").value.trim(),
+    transcription: $("#o_transcription").value,
+    corrige: $("#o_corrige").value,
+    note: $("#o_note").value.trim()
+  };
+  if (!data.transcription.trim() && !data.corrige.trim()) { alert("Ajoute au moins la transcription ou la correction."); return; }
+  if (id) { Object.assign(store.oraux.find(x => x.id === id), data); }
+  else { store.oraux.unshift(Object.assign({ id: uid(), date: todayISO() }, data)); }
+  save(); closeModal(); ui.tab = "oral"; render(); toast("Pratique orale enregistrée ✔");
+}
+
+/* ---------- Onglet Bilan (thèmes à travailler) ---------- */
+function renderBilan() {
+  const cards = store.cartes;
+  const byType = {};
+  for (const c of cards) { const t = c.tipo || "autre"; byType[t] = (byType[t] || 0) + 1; }
+  const typeArr = Object.entries(byType).map(([v, n]) => ({ v, n, l: typeLabel(v) })).sort((a, b) => b.n - a.n);
+  const maxType = typeArr.length ? typeArr[0].n : 0;
+  const byTag = {};
+  for (const c of cards) for (const t of (c.tags || [])) byTag[t] = (byTag[t] || 0) + 1;
+  const tagArr = Object.entries(byTag).map(([t, n]) => ({ t, n })).sort((a, b) => b.n - a.n).slice(0, 15);
+  const maxTag = tagArr.length ? tagArr[0].n : 0;
+  const bar = (n, max, label) => `<div class="bilan-row"><span class="bilan-label">${esc(label)}</span><span class="bilan-bar"><span style="width:${max ? Math.round(n / max * 100) : 0}%"></span></span><span class="bilan-n">${n}</span></div>`;
+
+  let html = `
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat"><div class="n">${store.textes.length}</div><div class="l">écrits</div></div>
+      <div class="stat"><div class="n">${store.oraux.length}</div><div class="l">oraux</div></div>
+      <div class="stat"><div class="n">${cards.length}</div><div class="l">cartes</div></div>
+    </div>`;
+  if (!cards.length) {
+    html += `<div class="empty"><div class="big">📊</div><p>Pas encore de cartes.<br>Ajoute des corrections (écrit ou oral) pour voir tes thèmes à travailler.</p></div>`;
+    app().innerHTML = html; return;
+  }
+  html += `<div class="card"><h3>Thèmes à travailler <span class="muted" style="font-weight:400">· par type d'erreur</span></h3>${typeArr.map(x => bar(x.n, maxType, x.l)).join("")}</div>`;
+  if (tagArr.length) html += `<div class="card"><h3>Étiquettes fréquentes</h3>${tagArr.map(x => bar(x.n, maxTag, "#" + x.t)).join("")}</div>`;
+  app().innerHTML = html;
+}
+
 /* ---------- Onglet Réviser ---------- */
 function renderReviser() {
   if (!ui.review) {
@@ -989,27 +1199,70 @@ function carteForm(c, prefill) {
    Coller un tableau de corrections (ChatGPT) → cartes
    ============================================================ */
 function cleanCell(c) { return (c || "").replace(/\*\*/g, "").replace(/`/g, "").trim(); }
+function catToTipo(s) {
+  s = (s || "").toLowerCase();
+  if (/conjug|temps|subjonctif|indicatif|verbe/.test(s)) return "conjugaison";
+  if (/pr[eé]position/.test(s)) return "preposition";
+  if (/connect|liaison|logique/.test(s)) return "connecteur";
+  if (/orthograph|accent/.test(s)) return "orthographe";
+  if (/vocab|lexi/.test(s)) return "vocabulaire";
+  if (/grammaire|accord|genre|article|syntaxe|structure|pronom/.test(s)) return "grammaire";
+  if (/express|collocation|formul|tournure|naturel/.test(s)) return "expression";
+  return "expression";
+}
+function splitCells(t) {
+  let cells;
+  if (t.includes("|")) cells = t.split("|");
+  else if (t.includes("\t")) cells = t.split("\t");
+  else if (t.includes("→")) cells = t.split("→");
+  else if (t.includes("->")) cells = t.split("->");
+  else return null;
+  cells = cells.map(c => c.trim());
+  while (cells.length && cells[0] === "") cells.shift();
+  while (cells.length && cells[cells.length - 1] === "") cells.pop();
+  return cells;
+}
 function parseTable(raw) {
-  const out = [];
+  const rows = [];
   for (const line of (raw || "").split(/\r?\n/)) {
-    const t = line.trim();
-    if (!t) continue;
-    let cells;
-    if (t.includes("|")) cells = t.split("|");
-    else if (t.includes("\t")) cells = t.split("\t");
-    else if (t.includes("→")) cells = t.split("→");
-    else if (t.includes("->")) cells = t.split("->");
-    else continue;
-    cells = cells.map(c => c.trim());
-    while (cells.length && cells[0] === "") cells.shift();
-    while (cells.length && cells[cells.length - 1] === "") cells.pop();
-    if (cells.length < 2) continue;
-    if (cells.every(c => /^:?-{2,}:?$/.test(c))) continue;          // ligne de séparation ---
-    if (/❌|✅/.test(cells[0] + cells[1])) continue;                 // en-tête avec émojis
-    const avant = cleanCell(cells[0]), apres = cleanCell(cells[1]);
+    const t = line.trim(); if (!t) continue;
+    const cells = splitCells(t);
+    if (!cells || cells.length < 2) continue;
+    if (cells.every(c => /^:?-{2,}:?$/.test(c))) continue;          // séparation ---
+    rows.push(cells);
+  }
+  if (!rows.length) return [];
+  // en-tête ? → cartographie des colonnes (permet une colonne « Catégorie »)
+  let map = null;
+  const h = rows[0].map(c => c.toLowerCase());
+  const isHeader = rows[0].some(c => /❌|✅/.test(c)) || h.some(c => /cat[eé]gorie|type|th[eè]me|éviter|eviter|mieux|explication|exemple|incorrect|correct/.test(c));
+  if (isHeader) {
+    map = {
+      cat: h.findIndex(c => /cat[eé]gorie|type|th[eè]me/.test(c)),
+      avant: h.findIndex(c => /❌|éviter|eviter|\bincorrect|moins|avant/.test(c)),
+      apres: h.findIndex(c => /✅|mieux|\bcorrect|correcta|\bplus\b|apr[eè]s/.test(c)),
+      note: h.findIndex(c => /explication|r[eè]gle|raison|note/.test(c)),
+      exemple: h.findIndex(c => /exemple|ejemplo|phrase/.test(c))
+    };
+    rows.shift();
+  }
+  const out = [];
+  for (const cells of rows) {
+    let avant, apres, note = "", exemple = "", tipo;
+    if (map) {
+      const g = i => (i >= 0 && i < cells.length) ? cleanCell(cells[i]) : "";
+      avant = g(map.avant >= 0 ? map.avant : 0);
+      apres = g(map.apres >= 0 ? map.apres : 1);
+      note = g(map.note); exemple = g(map.exemple);
+      if (map.cat >= 0) tipo = catToTipo(cleanCell(cells[map.cat]));
+    } else {
+      avant = cleanCell(cells[0]); apres = cleanCell(cells[1]);
+      note = cleanCell(cells[2] || ""); exemple = cleanCell(cells[3] || "");
+    }
     if (!avant && !apres) continue;
-    if (/naturel|natural/i.test(avant + " " + apres)) continue;      // en-tête « moins/plus naturel »
-    out.push({ avant, apres, note: cleanCell(cells[2] || ""), exemple: cleanCell(cells[3] || "") });
+    if (/❌|✅/.test(avant + apres)) continue;
+    if (!map && /naturel|natural/i.test(avant + " " + apres)) continue;
+    out.push({ avant, apres, note, exemple, tipo });
   }
   return out;
 }
@@ -1033,11 +1286,11 @@ function parseExpressions(raw) {
   return out;
 }
 function pasteTableForm(prefill) {
-  tblCtx = prefill || { source: "", texteId: null };
+  tblCtx = Object.assign({ source: "", texteId: null, oralId: null }, prefill || {});
   openModal(`
     <h2>Coller un tableau de corrections</h2>
-    <div class="hint-box">Deux formats acceptés :<br>• <b>Tableau</b> — <code>❌ | ✅</code> (+ en option <code>| explication | exemple</code>), une correction par ligne.<br>• <b>Prose</b> — <code>expression = sens</code> suivi de phrases d'exemple.</div>
-    <label class="field"><span>Tableau</span><textarea id="tblInput" class="big" placeholder="| être important à… | jouer un rôle important dans… |&#10;| être considéré | être pris en compte |"></textarea></label>
+    <div class="hint-box">Colle le retour de ChatGPT. Formats acceptés :<br>• <b>Tableau</b> — idéalement <code>Catégorie | ❌ | ✅ | explication | exemple</code> (la catégorie classe la carte).<br>• <b>Prose</b> — <code>expression = sens</code> suivi de phrases d'exemple.<br><button class="btn sm" data-action="copy-prompt" style="margin-top:8px">📋 Copier le prompt ChatGPT recommandé</button></div>
+    <label class="field"><span>Tableau ou texte</span><textarea id="tblInput" class="big" placeholder="| Catégorie | ❌ À éviter | ✅ Mieux | Explication | Exemple |&#10;| préposition | être important à… | jouer un rôle important dans… | … | … |"></textarea></label>
     <div class="modal-actions">
       <button class="btn primary" data-action="analyze-table">Analyser →</button>
       <button class="btn ghost" data-action="cancel">Annuler</button>
@@ -1054,7 +1307,7 @@ function candReviewForm(cands) {
           <input type="text" id="cd_apres_${i}" value="${esc(c.apres)}" placeholder="mieux ✅" style="flex:1;min-width:0">
         </div>
         <div class="row" style="gap:8px">
-          <select id="cd_type_${i}" style="width:auto">${TYPES.map(tp => `<option value="${tp.v}">${tp.l}</option>`).join("")}</select>
+          <select id="cd_type_${i}" style="width:auto">${TYPES.map(tp => `<option value="${tp.v}"${(c.tipo || "expression") === tp.v ? " selected" : ""}>${tp.l}</option>`).join("")}</select>
           <input type="text" id="cd_note_${i}" value="${esc(c.note)}" placeholder="explication (facultatif)" style="flex:1;min-width:0">
         </div>
         <input type="text" id="cd_ex_${i}" value="${esc(c.exemple)}" placeholder="exemple (facultatif)" style="width:100%">
@@ -1074,7 +1327,7 @@ function saveCands(count) {
   for (let i = 0; i < count; i++) {
     const chk = $("#cd_chk_" + i); if (!chk || !chk.checked) continue;
     const apres = $("#cd_apres_" + i).value.trim(); if (!apres) continue;
-    store.cartes.push({ id: uid(), tipo: $("#cd_type_" + i).value, avant: $("#cd_avant_" + i).value.trim(), apres, note: $("#cd_note_" + i).value.trim(), exemple: $("#cd_ex_" + i).value.trim(), source: tblCtx.source || "", tags: [], texteId: tblCtx.texteId || null, cree: todayISO(), srs: newSrs() });
+    store.cartes.push({ id: uid(), tipo: $("#cd_type_" + i).value, avant: $("#cd_avant_" + i).value.trim(), apres, note: $("#cd_note_" + i).value.trim(), exemple: $("#cd_ex_" + i).value.trim(), source: tblCtx.source || "", tags: [], texteId: tblCtx.texteId || null, oralId: tblCtx.oralId || null, cree: todayISO(), srs: newSrs() });
     n++;
   }
   if (!n) { alert("Aucune carte cochée."); return; }
@@ -1128,9 +1381,18 @@ document.body.addEventListener("click", e => {
     case "paste-from": { const t = store.textes.find(t => t.id === id); pasteTableForm({ source: sourceLabel(t), texteId: t.id }); break; }
     case "paste-table": pasteTableForm({ source: "", texteId: null }); break;
     case "analyze-table": { const raw = $("#tblInput").value; let cands = parseTable(raw); if (!cands.length) cands = parseExpressions(raw); if (!cands.length) { alert("Aucune correction détectée. Formats acceptés : tableau ❌ | ✅, ou « expression = sens » suivi d'exemples."); break; } candReviewForm(cands); break; }
+    case "copy-prompt": { const done = () => toast("Prompt copié ✔"); if (navigator.clipboard) navigator.clipboard.writeText(STD_PROMPT).then(done).catch(() => alert(STD_PROMPT)); else alert(STD_PROMPT); break; }
     case "save-cands": saveCands(Number(el.dataset.count)); break;
     case "comb-prev": combShift(-1); break;
     case "comb-next": combShift(1); break;
+
+    case "new-oral": oralForm(null); break;
+    case "edit-oral": oralForm(store.oraux.find(o => o.id === id)); break;
+    case "del-oral": if (confirm("Supprimer cette pratique orale ?")) { store.oraux = store.oraux.filter(o => o.id !== id); save(); render(); } break;
+    case "save-oral": saveOral(id); break;
+    case "paste-from-oral": { const o = store.oraux.find(o => o.id === id); pasteTableForm({ source: oralLabel(o), texteId: null, oralId: o.id }); break; }
+    case "part-prev": partShift(-1); break;
+    case "part-next": partShift(1); break;
 
     case "setup-mode": ui.session.timerMode = el.dataset.mode; renderSentrainer(); break;
     case "session-write": startWriting(); break;
@@ -1185,6 +1447,9 @@ document.addEventListener("keydown", e => {
   } else if (ui.tab === "textes" && ui.search.trim() === "") {
     if (k === "ArrowRight") { e.preventDefault(); combShift(1); }
     else if (k === "ArrowLeft") { e.preventDefault(); combShift(-1); }
+  } else if (ui.tab === "oral" && ui.search.trim() === "") {
+    if (k === "ArrowRight") { e.preventDefault(); partShift(1); }
+    else if (k === "ArrowLeft") { e.preventDefault(); partShift(-1); }
   } else if (ui.tab === "reviser" && ui.review) {
     if (!ui.flipped) {
       if (k === " " || k === "Enter" || k === "ArrowRight") { e.preventDefault(); ui.flipped = true; renderReviser(); }
