@@ -231,6 +231,7 @@
   .bilan-bar { flex: 1; height: 12px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
   .bilan-bar span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
   .bilan-n { flex: 0 0 auto; font-weight: 700; font-size: .9rem; min-width: 22px; text-align: right; }
+  .modele-frame { width: 100%; height: 72vh; border: 1px solid var(--border); border-radius: var(--radius-md); margin-top: 12px; background: #fff; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: .9rem; font-weight: 600; box-shadow: var(--shadow-lg); z-index: 100; opacity: 0; transition: opacity var(--t); pointer-events: none; }
   .toast.show { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -245,8 +246,8 @@
       <button class="tab" data-tab="sentrainer">✍️ S'entraîner</button>
       <button class="tab" data-tab="textes">📝 Écrit</button>
       <button class="tab" data-tab="oral">🎤 Oral</button>
-      <button class="tab" data-tab="cartes">🃏 Cartes</button>
-      <button class="tab" data-tab="reviser">🔁 Réviser <span class="badge" id="dueBadge">0</span></button>
+      <button class="tab" data-tab="cartes">🃏 Cartes <span class="badge" id="dueBadge">0</span></button>
+      <button class="tab" data-tab="modeles">📚 Modèles</button>
       <button class="tab" data-tab="bilan">📊 Bilan</button>
       <button class="tab" data-tab="donnees">💾 Données</button>
     </nav>
@@ -496,7 +497,14 @@ function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = due
 /* ============================================================
    État de l'interface
    ============================================================ */
-let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0 };
+let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, modeleOpen: null };
+const MODELES = [
+  { f: "TCF_Tache3_Modele.pdf", titre: "Expression écrite — Tâche 3", cat: "Écrit", icon: "📝" },
+  { f: "TCF_Oral_Tache1.html", titre: "Expression orale — Tâche 1", cat: "Oral", icon: "🎤" },
+  { f: "TCF_Oral_Tache2.pdf", titre: "Expression orale — Tâche 2", cat: "Oral", icon: "🎤" },
+  { f: "TCF_Oral_Tache3.pdf", titre: "Expression orale — Tâche 3", cat: "Oral", icon: "🎤" },
+  { f: "TCF_Temps_Verbaux.pdf", titre: "Temps verbaux", cat: "Référence", icon: "📖" }
+];
 const DUREE_DEFAUT = { 1: 15, 2: 20, 3: 25 };   // écrit : minutes indicatives par tâche (≈ 60 min au total)
 const DUREE_ORAL = { 1: 2, 2: 6, 3: 7 };          // oral : minutes indicatives par tâche
 function dureeFor(mode, tache) { return (mode === "oral" ? DUREE_ORAL : DUREE_DEFAUT)[tache] || 15; }
@@ -538,8 +546,8 @@ function render() {
   if (ui.tab === "sentrainer") renderSentrainer();
   else if (ui.tab === "textes") renderTextes();
   else if (ui.tab === "oral") renderOral();
-  else if (ui.tab === "reviser") renderReviser();
-  else if (ui.tab === "cartes") renderCartes();
+  else if (ui.tab === "cartes") { if (ui.review) renderReviser(); else renderCartes(); }
+  else if (ui.tab === "modeles") renderModeles();
   else if (ui.tab === "bilan") renderBilan();
   else renderDonnees();
 }
@@ -1015,6 +1023,32 @@ function saveOral(id) {
   save(); closeModal(); ui.tab = "oral"; render(); toast("Pratique orale enregistrée ✔");
 }
 
+/* ---------- Onglet Modèles ---------- */
+function renderModeles() {
+  const cats = ["Écrit", "Oral", "Référence"];
+  let html = `<p class="muted" style="margin-top:14px">Tes modèles et références, centralisés. Ouvre-les pour t'en inspirer avant de t'entraîner.</p>`;
+  for (const cat of cats) {
+    const items = MODELES.filter(m => m.cat === cat);
+    if (!items.length) continue;
+    html += `<h3 style="margin:20px 2px 2px">${cat}</h3>`;
+    for (const m of items) {
+      const open = ui.modeleOpen === m.f;
+      html += `
+      <div class="card" style="margin-top:10px">
+        <div class="row" style="align-items:center;gap:12px">
+          <span style="font-size:1.7rem">${m.icon}</span>
+          <div style="min-width:0"><b>${esc(m.titre)}</b><div class="muted" style="font-size:.78rem">${esc(m.f)}</div></div>
+          <div class="spacer"></div>
+          <button class="btn sm" data-action="modele-toggle" data-f="${esc(m.f)}">${open ? "Masquer" : "👁 Aperçu"}</button>
+          <button class="btn sm" data-action="modele-open" data-f="${esc(m.f)}">Ouvrir ↗</button>
+        </div>
+        ${open ? `<iframe class="modele-frame" src="modeles/${encodeURIComponent(m.f)}" title="${esc(m.titre)}"></iframe>` : ""}
+      </div>`;
+    }
+  }
+  app().innerHTML = html;
+}
+
 /* ---------- Onglet Bilan (thèmes à travailler) ---------- */
 function renderBilan() {
   const cards = store.cartes;
@@ -1065,7 +1099,7 @@ function renderReviser() {
   }
   const { queue, idx } = ui.review;
   if (idx >= queue.length) {
-    app().innerHTML = `<div class="empty"><div class="big">🎉</div><p>Session terminée !<br><span class="muted">${ui.review.done} révision(s).</span></p><div class="row" style="justify-content:center;margin-top:16px"><button class="btn primary" data-action="review-restart">Nouvelle session</button></div></div>`;
+    app().innerHTML = `<div class="empty"><div class="big">🎉</div><p>Session terminée !<br><span class="muted">${ui.review.done} révision(s).</span></p><div class="row" style="justify-content:center;margin-top:16px"><button class="btn primary" data-action="review-restart">Retour aux cartes</button></div></div>`;
     ui.review = null;
     return;
   }
@@ -1110,7 +1144,13 @@ function filteredCartes() {
 }
 function renderCartes() {
   const list = filteredCartes();
+  const dueN = dueCount();
   let html = `
+    <div class="period-bar" style="justify-content:space-between">
+      ${dueN ? `<button class="btn primary" data-action="review-start">🔁 Réviser ${dueN} carte${dueN > 1 ? "s" : ""}</button>`
+      : `<span class="chip">✅ Rien à réviser aujourd'hui</span>`}
+      ${store.cartes.length ? `<button class="btn" data-action="review-all">Tout revoir</button>` : ""}
+    </div>
     <div class="row filters">
       <input class="search" id="searchInput" type="text" placeholder="Rechercher dans les cartes…" value="${esc(ui.search)}">
       <select id="cType">
@@ -1505,6 +1545,8 @@ document.body.addEventListener("click", e => {
     case "save-carte": saveCarte(id, el.dataset.texte); break;
     case "carte-prev": carteNav(-1); break;
     case "carte-next": carteNav(1); break;
+    case "modele-toggle": ui.modeleOpen = ui.modeleOpen === el.dataset.f ? null : el.dataset.f; renderModeles(); break;
+    case "modele-open": window.open("modeles/" + encodeURIComponent(el.dataset.f), "_blank", "noopener"); break;
 
     case "review-start": ui.review = { queue: shuffle(store.cartes.filter(isDue)), idx: 0, done: 0 }; ui.flipped = false; render(); break;
     case "review-all": ui.review = { queue: shuffle(store.cartes.slice()), idx: 0, done: 0 }; ui.flipped = false; render(); break;
@@ -1538,7 +1580,14 @@ document.addEventListener("keydown", e => {
   const tag = (e.target && e.target.tagName) || "";
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
   const k = e.key;
-  if (ui.tab === "cartes") {
+  if (ui.tab === "cartes" && ui.review) {
+    if (!ui.flipped) {
+      if (k === " " || k === "Enter" || k === "ArrowRight") { e.preventDefault(); ui.flipped = true; renderReviser(); }
+    } else {
+      const map = { "1": 0, "2": 3, "3": 4, "4": 5 };
+      if (k in map) { e.preventDefault(); gradeCard(map[k]); }
+    }
+  } else if (ui.tab === "cartes") {
     if (k === "ArrowRight") { e.preventDefault(); carteNav(1); }
     else if (k === "ArrowLeft") { e.preventDefault(); carteNav(-1); }
   } else if (ui.tab === "textes" && ui.search.trim() === "") {
@@ -1547,13 +1596,6 @@ document.addEventListener("keydown", e => {
   } else if (ui.tab === "oral" && ui.search.trim() === "") {
     if (k === "ArrowRight") { e.preventDefault(); partShift(1); }
     else if (k === "ArrowLeft") { e.preventDefault(); partShift(-1); }
-  } else if (ui.tab === "reviser" && ui.review) {
-    if (!ui.flipped) {
-      if (k === " " || k === "Enter" || k === "ArrowRight") { e.preventDefault(); ui.flipped = true; renderReviser(); }
-    } else {
-      const map = { "1": 0, "2": 3, "3": 4, "4": 5 };
-      if (k in map) { e.preventDefault(); gradeCard(map[k]); }
-    }
   }
 });
 
