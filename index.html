@@ -718,6 +718,12 @@ function renderEditor() {
         <label class="field" style="flex:1"><span>Note estimée (sur 20)</span><input type="text" inputmode="decimal" id="e_score" value="${esc(String(s.score ?? ""))}" placeholder="ex. 14"></label>
         <label class="field" style="flex:1"><span>Niveau CECR (facultatif)</span><input type="text" id="e_niveau" value="${esc(s.niveau || "")}" placeholder="ex. B2"></label>
       </div>
+      <div class="row" style="align-items:center;margin-top:14px">
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Corrections à mémoriser (facultatif) — colle le tableau ChatGPT</span>
+        <div class="spacer"></div>
+        <button type="button" class="btn sm" data-action="copy-prompt">📋 Prompt</button>
+      </div>
+      <textarea id="e_cards" placeholder="Colle ici le tableau des corrections (Catégorie | ❌ | ✅ | explication | exemple). Des cartes te seront proposées en enregistrant."></textarea>
       <div id="e_preview"></div>
       <div class="modal-actions">
         <button class="btn primary" data-action="session-save">${(s.corrige || isEdit) ? "Enregistrer" : "Enregistrer (correction plus tard)"}</button>
@@ -1235,18 +1241,29 @@ function saveSession() {
   s.corrige = ($("#e_corrige") || {}).value ?? s.corrige;
   s.score = ($("#e_score") || {}).value ?? s.score;
   s.niveau = ($("#e_niveau") || {}).value ?? s.niveau;
+  const cardsRaw = ($("#e_cards") || {}).value || "";
   if (!s.original.trim() && !s.corrige.trim()) { alert("Ajoute au moins la réponse ou la correction."); return; }
   const common = { tache: s.tache, annee: s.annee, mois: s.mois, consigne: s.consigne.trim(), corrige: s.corrige, score: String(s.score).trim(), niveau: (s.niveau || "").trim(), tempsSec: s.tempsSec || 0 };
-  if (s.mode === "oral") {
+  const oral = s.mode === "oral";
+  let obj;
+  if (oral) {
     const data = Object.assign({ partie: String(s.partie || "").trim(), transcription: s.original }, common);
-    if (s.editingId) Object.assign(store.oraux.find(x => x.id === s.editingId), data);
-    else store.oraux.unshift(Object.assign({ id: uid(), date: todayISO() }, data));
-    ui.session = null; save(); ui.tab = "oral"; render(); toast("Pratique orale enregistrée ✔");
+    if (s.editingId) { obj = store.oraux.find(x => x.id === s.editingId); Object.assign(obj, data); }
+    else { obj = Object.assign({ id: uid(), date: todayISO() }, data); store.oraux.unshift(obj); }
   } else {
     const data = Object.assign({ combinaison: String(s.combinaison || "").trim(), original: s.original }, common);
-    if (s.editingId) Object.assign(store.textes.find(x => x.id === s.editingId), data);
-    else store.textes.unshift(Object.assign({ id: uid(), date: todayISO() }, data));
-    ui.session = null; save(); ui.tab = "textes"; render(); toast("Texte enregistré ✔");
+    if (s.editingId) { obj = store.textes.find(x => x.id === s.editingId); Object.assign(obj, data); }
+    else { obj = Object.assign({ id: uid(), date: todayISO() }, data); store.textes.unshift(obj); }
+  }
+  const label = oral ? oralLabel(obj) : sourceLabel(obj);
+  ui.session = null; save(); ui.tab = oral ? "oral" : "textes"; render();
+  toast(oral ? "Pratique orale enregistrée ✔" : "Texte enregistré ✔");
+  // proposer des cartes à partir du tableau de corrections collé
+  if (cardsRaw.trim()) {
+    let cands = parseTable(cardsRaw);
+    if (!cands.length) cands = parseExpressions(cardsRaw);
+    if (cands.length) { tblCtx = { source: label, texteId: oral ? null : obj.id, oralId: oral ? obj.id : null }; candReviewForm(cands); }
+    else toast("Aucune correction détectée dans le tableau collé.");
   }
 }
 function cancelSession() {
