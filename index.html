@@ -180,7 +180,8 @@
   .write-area { flex: 1 1 auto; min-height: 0; font-size: 1.08rem; line-height: 1.75; resize: none; overflow-y: auto; }
   .write-foot { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
   .write-foot .muted b { color: var(--text); font-size: 1.02rem; }
-  .oral-cue { flex: 0 0 auto; text-align: center; color: var(--text-muted); font-size: .95rem; padding: 6px 0; }
+  .oral-timer { text-align: center; margin: 14px 0 12px; }
+  .oral-timer .timer { font-size: 3rem; }
   body.writing .wrap { padding-bottom: 12px; }
   body.writing .app h1, body.writing .subtitle { display: none; }
   .radio-pills { display: inline-flex; gap: 6px; }
@@ -531,9 +532,9 @@ const app = () => $("#app");
 function render() {
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === ui.tab));
   updateDueBadge();
-  const writing = ui.tab === "sentrainer" && ui.session && ui.session.phase === "write";
-  document.body.classList.toggle("writing", writing);
-  if (!writing) stopTimer();
+  const anyWriting = ui.tab === "sentrainer" && ui.session && ui.session.phase === "write";
+  document.body.classList.toggle("writing", anyWriting && ui.session.mode !== "oral");
+  if (!anyWriting) stopTimer();
   if (ui.tab === "sentrainer") renderSentrainer();
   else if (ui.tab === "textes") renderTextes();
   else if (ui.tab === "oral") renderOral();
@@ -631,13 +632,7 @@ function renderSentrainer() {
 
 function renderWrite() {
   const s = ui.session;
-  const oral = s.mode === "oral";
-  const numChip = oral ? (s.partie !== "" ? `<span class="chip">Partie ${esc(String(s.partie))}</span>` : "") : (s.combinaison !== "" ? `<span class="chip">Comb. ${esc(String(s.combinaison))}</span>` : "");
-  const bodyHtml = oral
-    ? `<div class="consigne-ref" id="consigneRef" style="flex:1 1 auto;max-height:none">${s.consigne ? esc(s.consigne) : "(pas de consigne)"}</div>
-       <div class="oral-cue">🎤 Parle à voix haute jusqu'à la fin du temps. Enregistre-toi à part : tu colleras la transcription ensuite.</div>`
-    : `${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : ""}
-       <textarea id="writeArea" class="write-area" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" placeholder="Écris ici ta réponse à la consigne…">${esc(s.original)}</textarea>`;
+  if (s.mode === "oral") return renderSpeak();
   app().innerHTML = `
     <div class="write-view">
       <div class="write-top">
@@ -647,26 +642,50 @@ function renderWrite() {
           <button type="button" data-action="timer-mode" data-mode="up" class="${s.timerMode === "up" ? "on" : ""}">⏱️</button>
         </div>
         <span class="chip t${s.tache}">Tâche ${s.tache}</span>
-        ${numChip}
+        ${s.combinaison !== "" ? `<span class="chip">Comb. ${esc(String(s.combinaison))}</span>` : ""}
         <div class="spacer"></div>
-        ${(!oral && s.consigne) ? `<button type="button" class="btn ghost sm" data-action="toggle-consigne">👁 Consigne</button>` : ""}
+        ${s.consigne ? `<button type="button" class="btn ghost sm" data-action="toggle-consigne">👁 Consigne</button>` : ""}
       </div>
-      ${bodyHtml}
+      ${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : ""}
+      <textarea id="writeArea" class="write-area" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" placeholder="Écris ici ta réponse à la consigne…">${esc(s.original)}</textarea>
       <div class="write-foot">
-        <span class="muted">${oral ? "🎤 Réponse orale" : `<b id="wcWords">0</b> mots · <b id="wcChars">0</b> caractères`}</span>
+        <span class="muted"><b id="wcWords">0</b> mots · <b id="wcChars">0</b> caractères</span>
         <div class="spacer"></div>
         <button class="btn ghost" data-action="session-cancel">Abandonner</button>
         <button class="btn primary" data-action="session-finish">Terminer ✓</button>
       </div>
     </div>`;
-  if (!oral) {
-    const ta = $("#writeArea");
-    ta.addEventListener("input", () => { s.original = ta.value; updateCounts(); });
-    updateCounts();
-    ta.focus();
-  }
+  const ta = $("#writeArea");
+  ta.addEventListener("input", () => { s.original = ta.value; updateCounts(); });
+  updateCounts();
   startTimer();
   sizeWriteView();
+  ta.focus();
+}
+
+function renderSpeak() {
+  const s = ui.session;
+  app().innerHTML = `
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="align-items:center">
+        <span class="chip t${s.tache}">Tâche ${s.tache}</span>
+        ${s.partie !== "" ? `<span class="chip">Partie ${esc(String(s.partie))}</span>` : ""}
+        <div class="spacer"></div>
+        <div class="radio-pills">
+          <button type="button" data-action="timer-mode" data-mode="up" class="${s.timerMode === "up" ? "on" : ""}">⏱️</button>
+          <button type="button" data-action="timer-mode" data-mode="down" class="${s.timerMode === "down" ? "on" : ""}">⏳</button>
+        </div>
+      </div>
+      <div class="oral-timer"><span class="timer" id="timerDisplay">--:--</span></div>
+      ${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : `<p class="muted" style="text-align:center">(pas de consigne)</p>`}
+      <div class="row" style="margin-top:16px;align-items:center">
+        <button class="btn ghost" data-action="session-cancel">Abandonner</button>
+        <div class="spacer"></div>
+        <button class="btn primary" data-action="session-finish">⏹ Arrêter &amp; corriger →</button>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.85rem;text-align:center;margin-top:10px">Parle à voix haute et enregistre-toi à part. En arrêtant, tu colleras la transcription et la correction.</p>`;
+  startTimer();
 }
 
 function renderEditor() {
@@ -1454,7 +1473,7 @@ document.body.addEventListener("click", e => {
     case "part-prev": partShift(-1); break;
     case "part-next": partShift(1); break;
 
-    case "practice-mode": ui.session.mode = el.dataset.mode; ui.session.durationMin = dureeFor(ui.session.mode, ui.session.tache); renderSentrainer(); break;
+    case "practice-mode": ui.session.mode = el.dataset.mode; ui.session.durationMin = dureeFor(ui.session.mode, ui.session.tache); ui.session.timerMode = el.dataset.mode === "oral" ? "up" : "down"; renderSentrainer(); break;
     case "setup-mode": ui.session.timerMode = el.dataset.mode; renderSentrainer(); break;
     case "session-write": startWriting(); break;
     case "timer-mode": ui.session.timerMode = el.dataset.mode; document.querySelectorAll("[data-action='timer-mode']").forEach(b => b.classList.toggle("on", b.dataset.mode === el.dataset.mode)); updateTimer(); break;
