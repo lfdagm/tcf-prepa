@@ -143,6 +143,12 @@
   .period-bar { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 8px 12px; }
   .period-label { font-weight: 700; font-size: 1.05rem; text-transform: capitalize; min-width: 190px; text-align: center; }
   .period-label .muted { font-weight: 600; text-transform: none; }
+  .catchips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .catchip { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); font: inherit; font-size: .85rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: var(--t); }
+  .catchip:hover { background: var(--surface-3); color: var(--text); }
+  .catchip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .catchip b { font-weight: 800; opacity: .85; margin-left: 3px; }
+  @media (prefers-color-scheme: dark) { .catchip.on { color: #0d1018; } }
 
   .consigne { background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: 10px 12px; font-size: .92rem; color: var(--text-muted); white-space: pre-wrap; }
 
@@ -335,13 +341,22 @@ const typeLabel = v => (TYPES.find(t => t.v === v) || { l: v }).l;
 
 // Prompt standard à donner à ChatGPT : renvoie un tableau que l'app importe directement,
 // avec une colonne « Catégorie » qui classe chaque correction (→ cartes + Bilan).
-const STD_PROMPT = `Agis comme un examinateur du TCF. Évalue et corrige mon texte (ou ma transcription orale).
-1) Sur la toute première ligne, donne une note estimée sur 20 et le niveau CECR, exactement ainsi :
+const STD_PROMPT = `Tu es examinateur du TCF Canada (expression écrite ou orale). Tu m'aides à préparer l'examen, niveau visé B2. Je colle la consigne puis mon texte (ou la transcription de ma réponse orale). Réponds UNIQUEMENT avec ces trois blocs, dans cet ordre, sans autre commentaire :
+
+1) Première ligne : une note estimée sur 20 et le niveau CECR, exactement ainsi :
 Note : 14/20 (B2)
-2) Ensuite, UNIQUEMENT un tableau Markdown, une ligne par correction, avec exactement cet en-tête :
+
+2) Sous le titre « VERSION CORRIGÉE : », réécris mon texte corrigé en entier (garde ma longueur et mes idées, mais un français correct et naturel de niveau B2).
+
+3) Sous le titre « CORRECTIONS : », un tableau Markdown, une ligne par correction (fautes ET tournures peu naturelles), avec exactement cet en-tête :
 | Catégorie | ❌ À éviter | ✅ Mieux | Explication courte | Exemple correct |
 La colonne Catégorie doit être l'une de : expression, conjugaison, grammaire, préposition, vocabulaire, connecteur, orthographe.
-N'ajoute rien d'autre.`;
+
+Consigne :
+[colle ici la consigne]
+
+Mon texte / ma transcription :
+[colle ici]`;
 
 const KEY = "tcf-ecrit-journal-v1";
 const SYNC_KEY = "tcf-ecrit-journal-sync";
@@ -1137,7 +1152,7 @@ function renderReviser() {
       <span class="chip type" style="align-self:center">${typeLabel(c.tipo)}</span>`;
   if (!ui.flipped) {
     html += `
-      <div class="cue-label">${c.avant ? "Tu as écrit" : "Indice"}</div>
+      <div class="cue-label">${c.avant ? "À reformuler" : "Indice"}</div>
       <div class="cue ${c.avant ? "wrong" : ""}">${esc(cue)}</div>
       <div class="flip-hint">Clique ou <kbd>Espace</kbd> pour révéler ➜</div>`;
   } else {
@@ -1171,28 +1186,31 @@ function filteredCartes() {
 function renderCartes() {
   const list = filteredCartes();
   const dueN = dueCount();
+  const counts = {};
+  for (const cc of store.cartes) { const t = cc.tipo || "autre"; counts[t] = (counts[t] || 0) + 1; }
+  const cats = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const chips = `<button class="catchip${ui.cType === "all" ? " on" : ""}" data-action="cart-cat" data-cat="all">Toutes <b>${store.cartes.length}</b></button>`
+    + cats.map(([v, n]) => `<button class="catchip${ui.cType === v ? " on" : ""}" data-action="cart-cat" data-cat="${v}">${typeLabel(v)} <b>${n}</b></button>`).join("");
+
   let html = `
     <div class="period-bar" style="justify-content:space-between">
-      ${dueN ? `<button class="btn primary" data-action="review-start">🔁 Réviser ${dueN} carte${dueN > 1 ? "s" : ""}</button>`
-      : `<span class="chip">✅ Rien à réviser aujourd'hui</span>`}
       <div class="row" style="gap:8px">
-        ${store.cartes.length ? `<button class="btn" data-action="review-all">Tout revoir</button>` : ""}
-        <button class="btn" data-action="cartes-bilan">📊 Bilan</button>
+        ${dueN ? `<button class="btn primary" data-action="review-start">🔁 Réviser ${dueN}</button>`
+      : `<span class="chip">✅ Rien à réviser</span>`}
+        ${store.cartes.length ? `<button class="btn sm" data-action="review-all">Tout revoir</button>` : ""}
       </div>
+      <button class="btn" data-action="cartes-bilan">📊 Bilan</button>
     </div>
+    ${store.cartes.length ? `<div class="catchips">${chips}</div>` : ""}
     <div class="row filters">
       <input class="search" id="searchInput" type="text" placeholder="Rechercher dans les cartes…" value="${esc(ui.search)}">
-      <select id="cType">
-        <option value="all"${ui.cType === "all" ? " selected" : ""}>Tous les types</option>
-        ${TYPES.map(t => `<option value="${t.v}"${ui.cType === t.v ? " selected" : ""}>${t.l}</option>`).join("")}
-      </select>
       <div class="spacer"></div>
-      <button class="btn" data-action="paste-table">⧉ Coller un tableau</button>
-      <button class="btn primary" data-action="new-carte">+ Nouvelle carte</button>
+      <button class="btn" data-action="new-carte">+ Carte</button>
+      <button class="btn" data-action="paste-table">⧉ Tableau</button>
     </div>`;
 
   if (!list.length) {
-    html += `<div class="empty"><div class="big">🃏</div><p>Aucune carte.<br>Crée-les depuis un texte ou ici directement.</p></div>`;
+    html += `<div class="empty"><div class="big">🃏</div><p>${store.cartes.length ? "Aucune carte dans cette catégorie." : "Aucune carte.<br>Crée-les depuis un texte/oral ou ici."}</p></div>`;
     app().innerHTML = html;
     bindCartesFilters();
     return;
@@ -1202,6 +1220,9 @@ function renderCartes() {
   if (ui.cIdx < 0) ui.cIdx = list.length - 1;
   const c = list[ui.cIdx];
   const due = isDue(c);
+  const srcBtn = (c.texteId || c.oralId)
+    ? `<button class="btn ghost sm" data-action="carte-source" data-id="${c.id}" style="margin-top:10px">📄 Voir le contexte${c.source ? " · " + esc(c.source) : ""}</button>`
+    : (c.source ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">${esc(c.source)}</p>` : "");
   html += `
     <div class="card">
       <div class="meta">
@@ -1215,7 +1236,8 @@ function renderCartes() {
       <div class="expr">${esc(c.apres)}</div>
       ${c.exemple ? `<p class="expr-ex">« ${esc(c.exemple)} »</p>` : ""}
       ${c.note ? `<p class="expr-note">💡 ${esc(c.note)}</p>` : ""}
-      ${c.avant ? `<p class="expr-avant">Au lieu de : <span>${esc(c.avant)}</span></p>` : ""}
+      ${c.avant ? `<p class="expr-avant">plutôt que : <span>${esc(c.avant)}</span></p>` : ""}
+      ${srcBtn}
     </div>
     <div class="browser-nav">
       <button class="btn" data-action="carte-prev">‹ Précédent</button>
@@ -1229,10 +1251,35 @@ function renderCartes() {
 function bindCartesFilters() {
   const si = $("#searchInput");
   if (si) si.addEventListener("input", e => { ui.search = e.target.value; ui.cIdx = 0; const p = si.selectionStart; renderCartes(); const s2 = $("#searchInput"); s2.focus(); s2.setSelectionRange(p, p); });
-  const ct = $("#cType");
-  if (ct) ct.addEventListener("change", e => { ui.cType = e.target.value; ui.cIdx = 0; renderCartes(); });
 }
 function carteNav(delta) { const n = filteredCartes().length; if (!n) return; ui.cIdx = (ui.cIdx + delta + n) % n; renderCartes(); }
+function sourceModal(cardId) {
+  const c = store.cartes.find(x => x.id === cardId); if (!c) return;
+  let src = null, kind = "";
+  if (c.texteId) { src = store.textes.find(t => t.id === c.texteId); kind = "Écrit"; }
+  else if (c.oralId) { src = store.oraux.find(o => o.id === c.oralId); kind = "Oral"; }
+  if (!src) { alert("Le texte source n'existe plus."); return; }
+  const orig = kind === "Oral" ? (src.transcription || "") : (src.original || "");
+  const leftHead = kind === "Oral" ? "Transcription" : "Ma version";
+  const label = kind === "Oral" ? oralLabel(src) : sourceLabel(src);
+  const hasCorr = (src.corrige || "").trim().length > 0;
+  const sides = diffSides(orig, src.corrige);
+  openModal(`
+    <h2>Contexte · ${kind}</h2>
+    <div class="meta" style="margin-top:6px">
+      <span class="chip t${src.tache}">Tâche ${src.tache}</span>
+      ${label ? `<span class="chip">${esc(label)}</span>` : ""}
+      ${scoreChip(src)}
+      <span class="muted" style="font-size:.82rem">${fmtDate(src.date)}</span>
+    </div>
+    ${src.consigne ? `<div class="consigne" style="margin-top:8px">${esc(src.consigne)}</div>` : ""}
+    ${hasCorr ? `
+    <div class="sbs">
+      <div class="col"><div class="col-head"><span>${leftHead}</span></div><div class="texte-body">${sides.left}</div></div>
+      <div class="col corr"><div class="col-head"><span>Version corrigée</span></div><div class="texte-body">${sides.right}</div></div>
+    </div>` : `<div class="texte-body" style="margin-top:8px">${esc(orig)}</div>`}
+    <div class="modal-actions"><button class="btn ghost" data-action="cancel">Fermer</button></div>`);
+}
 function monthCombos() { const mt = store.textes.filter(t => Number(t.annee) === ui.periodY && Number(t.mois) === ui.periodM); return [...new Set(mt.map(t => String(t.combinaison ?? "")))]; }
 function combShift(delta) { const n = monthCombos().length; if (!n) return; ui.combIdx = (ui.combIdx + delta + n) % n; renderTextes(); }
 
@@ -1574,6 +1621,8 @@ document.body.addEventListener("click", e => {
     case "save-carte": saveCarte(id, el.dataset.texte); break;
     case "carte-prev": carteNav(-1); break;
     case "carte-next": carteNav(1); break;
+    case "cart-cat": ui.cType = el.dataset.cat; ui.cIdx = 0; renderCartes(); break;
+    case "carte-source": sourceModal(id); break;
     case "modele-toggle": ui.modeleOpen = ui.modeleOpen === el.dataset.f ? null : el.dataset.f; renderModeles(); break;
     case "modele-open": window.open("modeles/" + encodeURIComponent(el.dataset.f), "_blank", "noopener"); break;
     case "vocab-open": window.open(VOCAB_URL, "_blank", "noopener"); break;
