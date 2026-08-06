@@ -96,6 +96,8 @@
   }
   .wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 80px; }
   header.app { margin-bottom: 18px; }
+  .app-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .gear { font-size: 1.3rem; line-height: 1; flex: 0 0 auto; padding: 8px 12px; }
   h1 { font-size: 1.5rem; margin: 0 0 2px; letter-spacing: -.02em; }
   .subtitle { color: var(--text-soft); font-size: .9rem; margin: 0 0 16px; }
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); padding: 6px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
@@ -241,8 +243,13 @@
 <body>
 <div class="wrap">
   <header class="app">
-    <h1>Journal de préparation TCF</h1>
-    <p class="subtitle">Écrit · oral · vocabulaire · mes corrections, cartes et modèles</p>
+    <div class="app-head">
+      <div>
+        <h1>Journal de préparation TCF</h1>
+        <p class="subtitle">Écrit · oral · vocabulaire · mes corrections, cartes et modèles</p>
+      </div>
+      <button class="btn ghost gear" data-action="open-donnees" title="Données & synchronisation" aria-label="Données et synchronisation">⚙</button>
+    </div>
     <nav class="tabs" id="tabs">
       <button class="tab" data-tab="sentrainer">✍️ S'entraîner</button>
       <button class="tab" data-tab="textes">📝 Écrit</button>
@@ -250,8 +257,6 @@
       <button class="tab" data-tab="cartes">🃏 Cartes <span class="badge" id="dueBadge">0</span></button>
       <button class="tab" data-tab="modeles">📚 Modèles</button>
       <button class="tab" data-tab="vocab">🔤 Vocabulaire</button>
-      <button class="tab" data-tab="bilan">📊 Bilan</button>
-      <button class="tab" data-tab="donnees">💾 Données</button>
     </nav>
   </header>
   <main id="app"></main>
@@ -499,7 +504,7 @@ function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = due
 /* ============================================================
    État de l'interface
    ============================================================ */
-let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, modeleOpen: null };
+let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, modeleOpen: null, showBilan: false };
 const MODELES = [
   { f: "TCF_Tache3_Modele.html", titre: "Expression écrite — Tâche 3", cat: "Écrit", icon: "📝" },
   { f: "TCF_Oral_Tache1.html", titre: "Expression orale — Tâche 1", cat: "Oral", icon: "🎤" },
@@ -531,9 +536,7 @@ function scoreChip(x) {
 }
 
 function setTab(t) {
-  if (ui.session && ui.session.phase === "write" && ui.tab === "sentrainer" && t !== "sentrainer") {
-    // on garde la session en cours ; le chrono continue en arrière-plan
-  }
+  ui.showBilan = false;
   ui.tab = t; render();
 }
 
@@ -551,10 +554,9 @@ function render() {
   if (ui.tab === "sentrainer") renderSentrainer();
   else if (ui.tab === "textes") renderTextes();
   else if (ui.tab === "oral") renderOral();
-  else if (ui.tab === "cartes") { if (ui.review) renderReviser(); else renderCartes(); }
+  else if (ui.tab === "cartes") { if (ui.review) renderReviser(); else if (ui.showBilan) renderBilan(); else renderCartes(); }
   else if (ui.tab === "modeles") renderModeles();
   else if (ui.tab === "vocab") renderVocab();
-  else if (ui.tab === "bilan") renderBilan();
   else renderDonnees();
 }
 
@@ -1086,7 +1088,8 @@ function renderBilan() {
   const bar = (n, max, label) => `<div class="bilan-row"><span class="bilan-label">${esc(label)}</span><span class="bilan-bar"><span style="width:${max ? Math.round(n / max * 100) : 0}%"></span></span><span class="bilan-n">${n}</span></div>`;
 
   let html = `
-    <div class="stat-grid" style="margin-top:14px">
+    <div class="row" style="margin-top:14px"><button class="btn ghost sm" data-action="cartes-back">‹ Retour aux cartes</button></div>
+    <div class="stat-grid" style="margin-top:10px">
       <div class="stat"><div class="n">${store.textes.length}</div><div class="l">écrits</div></div>
       <div class="stat"><div class="n">${store.oraux.length}</div><div class="l">oraux</div></div>
       <div class="stat"><div class="n">${cards.length}</div><div class="l">cartes</div></div>
@@ -1172,7 +1175,10 @@ function renderCartes() {
     <div class="period-bar" style="justify-content:space-between">
       ${dueN ? `<button class="btn primary" data-action="review-start">🔁 Réviser ${dueN} carte${dueN > 1 ? "s" : ""}</button>`
       : `<span class="chip">✅ Rien à réviser aujourd'hui</span>`}
-      ${store.cartes.length ? `<button class="btn" data-action="review-all">Tout revoir</button>` : ""}
+      <div class="row" style="gap:8px">
+        ${store.cartes.length ? `<button class="btn" data-action="review-all">Tout revoir</button>` : ""}
+        <button class="btn" data-action="cartes-bilan">📊 Bilan</button>
+      </div>
     </div>
     <div class="row filters">
       <input class="search" id="searchInput" type="text" placeholder="Rechercher dans les cartes…" value="${esc(ui.search)}">
@@ -1571,6 +1577,9 @@ document.body.addEventListener("click", e => {
     case "modele-toggle": ui.modeleOpen = ui.modeleOpen === el.dataset.f ? null : el.dataset.f; renderModeles(); break;
     case "modele-open": window.open("modeles/" + encodeURIComponent(el.dataset.f), "_blank", "noopener"); break;
     case "vocab-open": window.open(VOCAB_URL, "_blank", "noopener"); break;
+    case "open-donnees": ui.showBilan = false; ui.tab = "donnees"; render(); break;
+    case "cartes-bilan": ui.showBilan = true; render(); break;
+    case "cartes-back": ui.showBilan = false; render(); break;
 
     case "review-start": ui.review = { queue: shuffle(store.cartes.filter(isDue)), idx: 0, done: 0 }; ui.flipped = false; render(); break;
     case "review-all": ui.review = { queue: shuffle(store.cartes.slice()), idx: 0, done: 0 }; ui.flipped = false; render(); break;
