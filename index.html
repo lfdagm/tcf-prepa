@@ -499,12 +499,13 @@ function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = due
    ============================================================ */
 let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, modeleOpen: null };
 const MODELES = [
-  { f: "TCF_Tache3_Modele.pdf", titre: "Expression écrite — Tâche 3", cat: "Écrit", icon: "📝" },
+  { f: "TCF_Tache3_Modele.html", titre: "Expression écrite — Tâche 3", cat: "Écrit", icon: "📝" },
   { f: "TCF_Oral_Tache1.html", titre: "Expression orale — Tâche 1", cat: "Oral", icon: "🎤" },
-  { f: "TCF_Oral_Tache2.pdf", titre: "Expression orale — Tâche 2", cat: "Oral", icon: "🎤" },
+  { f: "TCF_Oral_Tache2.html", titre: "Expression orale — Tâche 2", cat: "Oral", icon: "🎤" },
   { f: "TCF_Oral_Tache2_Expressions.html", titre: "Expression orale — Tâche 2 · Expressions utiles", cat: "Oral", icon: "🗂️" },
-  { f: "TCF_Oral_Tache3.pdf", titre: "Expression orale — Tâche 3", cat: "Oral", icon: "🎤" },
-  { f: "TCF_Temps_Verbaux.pdf", titre: "Temps verbaux", cat: "Référence", icon: "📖" }
+  { f: "TCF_Oral_Tache3.html", titre: "Expression orale — Tâche 3", cat: "Oral", icon: "🎤" },
+  { f: "TCF_Oral_Tache3_Canevas.html", titre: "Expression orale — Tâche 3 · Canevas", cat: "Oral", icon: "🧩" },
+  { f: "TCF_Temps_Verbaux.html", titre: "Temps verbaux", cat: "Référence", icon: "📖" }
 ];
 const DUREE_DEFAUT = { 1: 15, 2: 20, 3: 25 };   // écrit : minutes indicatives par tâche (≈ 60 min au total)
 const DUREE_ORAL = { 1: 2, 2: 6, 3: 7 };          // oral : minutes indicatives par tâche
