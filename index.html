@@ -1375,10 +1375,55 @@ function cancelSession() {
   ui.tab = wasEdit ? "textes" : "sentrainer"; render();
 }
 
+// Analyse une « fiche d'expression » ChatGPT (Expression / Signification / Exemple / À éviter / Remarque…)
+function parseCardBlock(raw) {
+  const lines = (raw || "").split(/\r?\n/).map(l => l.replace(/\*\*/g, "").trim());
+  const labels = [
+    ["expression", /^expression\b.*$/i],
+    ["signification", /^(signification|sens|meaning)\s*:?\s*$/i],
+    ["structure", /^(structure|construction)\s*:?\s*$/i],
+    ["exemple", /^exemple(?:\s+principal)?\s*:?\s*$/i],
+    ["autres", /^autres?\s+exemples?\s*:?\s*$/i],
+    ["eviter", /^[^A-Za-zÀ-ÿ]*à\s+éviter\s*:?\s*$/i],
+    ["naturelle", /^[^A-Za-zÀ-ÿ]*(formulation\s+naturelle|correct|mieux)\s*:?\s*$/i],
+    ["remarque", /^(remarque|note|astuce)s?\s*:?\s*$/i],
+    ["similaires", /^expressions?\s+similaires?\s*:?\s*$/i]
+  ];
+  const sec = {}; let cur = null;
+  for (const l of lines) {
+    if (!l) continue;
+    let matched = false;
+    for (const [key, re] of labels) { if (re.test(l)) { cur = key; sec[key] = sec[key] || []; matched = true; break; } }
+    if (matched) continue;
+    if (cur) sec[cur].push(l);
+  }
+  const clean = s => (s || "").replace(/^[\s\-–—•▸*✔️✅✗✘❌⚠️→»«]+/u, "").replace(/^["“]/, "").trim();
+  const first = k => clean((sec[k] || [])[0] || "");
+  const join = k => (sec[k] || []).map(clean).join(" ").trim();
+  const apres = first("expression") || first("naturelle");
+  const parts = [];
+  if (join("signification")) parts.push(join("signification"));
+  if (join("structure")) parts.push("Structure : " + join("structure"));
+  if (join("remarque")) parts.push(join("remarque"));
+  if (join("similaires")) parts.push("Similaires : " + (sec.similaires || []).map(clean).join(" / "));
+  return { tipo: "expression", apres, avant: first("eviter"), exemple: first("exemple"), note: parts.join("\n") };
+}
+function distributeCarteForm() {
+  const box = $("#c_paste"); if (!box) return;
+  const r = parseCardBlock(box.value);
+  const set = (id, v) => { const el = $(id); if (el && v) el.value = v; };
+  set("#c_apres", r.apres); set("#c_avant", r.avant); set("#c_note", r.note); set("#c_exemple", r.exemple);
+  if (r.tipo) { const t = $("#c_tipo"); if (t) t.value = r.tipo; }
+  if (!r.apres && !r.exemple) { alert("Rien détecté. Vérifie que la fiche a des sections (Expression, Signification, Exemple…)."); return; }
+  toast("Réparti ✔");
+}
 function carteForm(c, prefill) {
   const e = c || Object.assign({ tipo: "expression", avant: "", apres: "", note: "", exemple: "", source: "", tags: [], texteId: null }, prefill || {});
   openModal(`
     <h2>${c ? "Modifier la carte" : "Nouvelle carte"}</h2>
+    ${c ? "" : `<div class="hint-box">Colle la fiche d'une expression donnée par ChatGPT (Expression, Signification, Exemple, À éviter, Remarque…) puis clique « ⚡ Répartir ».</div>
+    <label class="field"><span>Coller depuis ChatGPT (facultatif)</span><textarea id="c_paste" placeholder="Colle ici toute la fiche de l'expression…"></textarea></label>
+    <div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-action="distribute-carte">⚡ Répartir</button></div>`}
     <label class="field"><span>Type</span><select id="c_tipo">${TYPES.map(t => `<option value="${t.v}"${e.tipo === t.v ? " selected" : ""}>${t.l}</option>`).join("")}</select></label>
     <label class="field"><span>Ce que j'ai écrit / dit (facultatif)</span><input type="text" id="c_avant" value="${esc(e.avant)}"></label>
     <label class="field"><span>Forme correcte ✅</span><input type="text" id="c_apres" value="${esc(e.apres)}"></label>
@@ -1607,6 +1652,7 @@ document.body.addEventListener("click", e => {
     case "analyze-table": { const raw = $("#tblInput").value; let cands = parseTable(raw); if (!cands.length) cands = parseExpressions(raw); if (!cands.length) { alert("Aucune correction détectée. Formats acceptés : tableau ❌ | ✅, ou « expression = sens » suivi d'exemples."); break; } candReviewForm(cands); break; }
     case "copy-prompt": { const done = () => toast("Prompt copié ✔"); if (navigator.clipboard) navigator.clipboard.writeText(STD_PROMPT).then(done).catch(() => alert(STD_PROMPT)); else alert(STD_PROMPT); break; }
     case "distribute": distributeResponse(); break;
+    case "distribute-carte": distributeCarteForm(); break;
     case "save-cands": saveCands(Number(el.dataset.count)); break;
     case "comb-prev": combShift(-1); break;
     case "comb-next": combShift(1); break;
