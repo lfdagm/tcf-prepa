@@ -264,14 +264,14 @@
     <div class="app-head">
       <div>
         <h1>Journal de préparation TCF</h1>
-        <p class="subtitle">Écrit · oral · vocabulaire · mes corrections, cartes et modèles</p>
+        <p class="subtitle">Écrit · orale · vocabulaire · mes corrections, cartes et modèles</p>
       </div>
       <button class="btn ghost gear" data-action="open-donnees" title="Données & synchronisation" aria-label="Données et synchronisation">⚙</button>
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab" data-tab="sentrainer">✍️ S'entraîner</button>
       <button class="tab" data-tab="textes">📝 Écrit</button>
-      <button class="tab" data-tab="oral">🎤 Oral</button>
+      <button class="tab" data-tab="oral">🎤 Orale</button>
       <button class="tab" data-tab="cartes">🃏 Cartes</button>
       <button class="tab" data-tab="modeles">📚 Modèles</button>
       <button class="tab" data-tab="vocab">🔤 Vocabulaire</button>
@@ -531,7 +531,7 @@ function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = due
 /* ============================================================
    État de l'interface
    ============================================================ */
-let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, modeleOpen: null, showBilan: false };
+let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, allTextes: false, allOraux: false, modeleOpen: null, showBilan: false };
 const MODELES = [
   { f: "TCF_Tache3_Modele.html", titre: "Expression écrite — Tâche 3", cat: "Écrit", icon: "📝" },
   { f: "TCF_Oral_Tache1.html", titre: "Expression orale — Tâche 1", cat: "Oral", icon: "🎤" },
@@ -636,7 +636,7 @@ function renderSentrainer() {
       <h3>Nouvelle pratique</h3>
       <div class="radio-pills" style="margin-top:6px">
         <button type="button" data-action="practice-mode" data-mode="ecrit" class="${!oral ? "on" : ""}">✍️ Écrit</button>
-        <button type="button" data-action="practice-mode" data-mode="oral" class="${oral ? "on" : ""}">🎤 Oral</button>
+        <button type="button" data-action="practice-mode" data-mode="oral" class="${oral ? "on" : ""}">🎤 Orale</button>
       </div>
       <div class="row" style="margin-top:12px">
         <label class="field" style="flex:1"><span>Tâche</span>
@@ -741,7 +741,7 @@ function renderEditor() {
   const leftHead = oral ? "Transcription" : "Ma version";
   app().innerHTML = `
     <div class="card">
-      <h3>${isEdit ? "✏️ Modifier" : "📋 Corriger & enregistrer"} <span class="muted" style="font-weight:400">· ${oral ? "oral" : "écrit"}</span></h3>
+      <h3>${isEdit ? "✏️ Modifier" : "📋 Corriger & enregistrer"} <span class="muted" style="font-weight:400">· ${oral ? "orale" : "écrit"}</span></h3>
       <div class="row" style="margin-top:6px">
         <label class="field" style="flex:1"><span>Tâche</span>
           <select id="e_tache">
@@ -836,10 +836,11 @@ function renderTextes() {
   if (ui.combIdx < 0) ui.combIdx = Math.max(0, combos.length - 1);
   const curCombo = combos[ui.combIdx];
 
+  const showAll = ui.allTextes;
   let list;
-  if (searching) {
-    const q = ui.search.toLowerCase();
-    list = store.textes.filter(t => [sourceLabel(t), t.consigne, t.original, t.corrige].join(" ").toLowerCase().includes(q));
+  if (searching || showAll) {
+    list = store.textes.slice();
+    if (searching) { const q = ui.search.toLowerCase(); list = list.filter(t => [sourceLabel(t), t.consigne, t.original, t.corrige].join(" ").toLowerCase().includes(q)); }
     list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   } else {
     list = monthTexts.filter(t => String(t.combinaison ?? "") === curCombo);
@@ -847,7 +848,8 @@ function renderTextes() {
   }
   if (ui.tFilter !== "all") list = list.filter(t => String(t.tache) === ui.tFilter);
 
-  const monthOpts = months.map(o => `<option value="${o.key}"${o.key === selKey ? " selected" : ""}>${cap(moisLabel(o.m))} ${o.y} — ${o.n} combinaison${o.n > 1 ? "s" : ""}</option>`).join("");
+  const monthOpts = `<option value="all"${showAll ? " selected" : ""}>— Toutes les combinaisons —</option>`
+    + months.map(o => `<option value="${o.key}"${!showAll && o.key === selKey ? " selected" : ""}>${cap(moisLabel(o.m))} ${o.y} — ${o.n} combinaison${o.n > 1 ? "s" : ""}</option>`).join("");
 
   let html = `
     <div class="row filters">
@@ -860,7 +862,7 @@ function renderTextes() {
       </select>
       <input class="search" id="searchInput" type="text" placeholder="Rechercher partout…" value="${esc(ui.search)}">
     </div>
-    ${searching ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">🔎 Recherche sur tous les mois.</p>`
+    ${(searching || showAll) ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">${searching ? "🔎 Recherche sur tous les mois." : `📂 Toutes les combinaisons · ${list.length} texte${list.length > 1 ? "s" : ""}`}</p>`
       : (combos.length ? `
     <div class="period-bar">
       <button class="btn sm" data-action="comb-prev" aria-label="Combinaison précédente">‹</button>
@@ -872,6 +874,7 @@ function renderTextes() {
   if (!list.length) {
     let msg;
     if (searching) msg = "Aucun résultat pour cette recherche.";
+    else if (showAll) msg = `Aucun texte pour l'instant.<br>Va dans <b>✍️ S'entraîner</b>.`;
     else if (!combos.length) msg = `Aucun texte en <b>${cap(moisLabel(ui.periodM))} ${ui.periodY}</b>.<br>Choisis un autre mois, ou va dans <b>✍️ S'entraîner</b>.`;
     else msg = `Aucune Tâche ${ui.tFilter} dans la combinaison ${esc(curCombo)}.`;
     html += `<div class="empty"><div class="big">📝</div><p>${msg}</p></div>`;
@@ -922,7 +925,7 @@ function renderTextes() {
   const tf = $("#tFilter");
   if (tf) tf.addEventListener("change", e => { ui.tFilter = e.target.value; renderTextes(); });
   const ms = $("#monthSel");
-  if (ms) ms.addEventListener("change", e => { const [y, m] = e.target.value.split("-").map(Number); ui.periodY = y; ui.periodM = m; ui.combIdx = 0; renderTextes(); });
+  if (ms) ms.addEventListener("change", e => { if (e.target.value === "all") { ui.allTextes = true; } else { const [y, m] = e.target.value.split("-").map(Number); ui.allTextes = false; ui.periodY = y; ui.periodM = m; ui.combIdx = 0; } renderTextes(); });
 }
 
 /* ---------- Onglet Oral ---------- */
@@ -952,10 +955,11 @@ function renderOral() {
   if (ui.oPartIdx < 0) ui.oPartIdx = Math.max(0, parts.length - 1);
   const curPart = parts[ui.oPartIdx];
 
+  const showAll = ui.allOraux;
   let list;
-  if (searching) {
-    const q = ui.search.toLowerCase();
-    list = store.oraux.filter(o => [oralLabel(o), o.consigne, o.transcription, o.corrige].join(" ").toLowerCase().includes(q));
+  if (searching || showAll) {
+    list = store.oraux.slice();
+    if (searching) { const q = ui.search.toLowerCase(); list = list.filter(o => [oralLabel(o), o.consigne, o.transcription, o.corrige].join(" ").toLowerCase().includes(q)); }
     list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   } else {
     list = monthEntries.filter(o => String(o.partie ?? "") === curPart);
@@ -963,7 +967,8 @@ function renderOral() {
   }
   if (ui.tFilter !== "all") list = list.filter(o => String(o.tache) === ui.tFilter);
 
-  const monthOpts = months.map(o => `<option value="${o.key}"${o.key === selKey ? " selected" : ""}>${cap(moisLabel(o.m))} ${o.y} — ${o.n} partie${o.n > 1 ? "s" : ""}</option>`).join("");
+  const monthOpts = `<option value="all"${showAll ? " selected" : ""}>— Toutes les parties —</option>`
+    + months.map(o => `<option value="${o.key}"${!showAll && o.key === selKey ? " selected" : ""}>${cap(moisLabel(o.m))} ${o.y} — ${o.n} partie${o.n > 1 ? "s" : ""}</option>`).join("");
 
   let html = `
     <div class="row filters">
@@ -978,7 +983,7 @@ function renderOral() {
       <div class="spacer"></div>
       <button class="btn primary" data-action="new-oral">+ Pratique orale</button>
     </div>
-    ${searching ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">🔎 Recherche sur tous les mois.</p>`
+    ${(searching || showAll) ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">${searching ? "🔎 Recherche sur tous les mois." : `📂 Toutes les parties · ${list.length} pratique${list.length > 1 ? "s" : ""}`}</p>`
       : (parts.length ? `
     <div class="period-bar">
       <button class="btn sm" data-action="part-prev" aria-label="Partie précédente">‹</button>
@@ -990,6 +995,7 @@ function renderOral() {
   if (!list.length) {
     let msg;
     if (searching) msg = "Aucun résultat pour cette recherche.";
+    else if (showAll) msg = `Aucune pratique orale pour l'instant.<br>Ajoute-en une avec <b>+ Pratique orale</b>.`;
     else if (!parts.length) msg = `Aucune pratique orale en <b>${cap(moisLabel(ui.oPeriodM))} ${ui.oPeriodY}</b>.<br>Ajoute-en une avec <b>+ Pratique orale</b>.`;
     else msg = `Aucune Tâche ${ui.tFilter} dans la partie ${esc(curPart)}.`;
     html += `<div class="empty"><div class="big">🎤</div><p>${msg}</p></div>`;
@@ -1030,7 +1036,7 @@ function renderOral() {
   const tf = $("#oTFilter");
   if (tf) tf.addEventListener("change", e => { ui.tFilter = e.target.value; renderOral(); });
   const ms = $("#oMonthSel");
-  if (ms) ms.addEventListener("change", e => { const [y, m] = e.target.value.split("-").map(Number); ui.oPeriodY = y; ui.oPeriodM = m; ui.oPartIdx = 0; renderOral(); });
+  if (ms) ms.addEventListener("change", e => { if (e.target.value === "all") { ui.allOraux = true; } else { const [y, m] = e.target.value.split("-").map(Number); ui.allOraux = false; ui.oPeriodY = y; ui.oPeriodM = m; ui.oPartIdx = 0; } renderOral(); });
 }
 
 function oralForm(o) {
@@ -1714,10 +1720,10 @@ document.addEventListener("keydown", e => {
   if (ui.tab === "cartes") {
     if (k === "ArrowRight") { e.preventDefault(); carteNav(1); }
     else if (k === "ArrowLeft") { e.preventDefault(); carteNav(-1); }
-  } else if (ui.tab === "textes" && ui.search.trim() === "") {
+  } else if (ui.tab === "textes" && ui.search.trim() === "" && !ui.allTextes) {
     if (k === "ArrowRight") { e.preventDefault(); combShift(1); }
     else if (k === "ArrowLeft") { e.preventDefault(); combShift(-1); }
-  } else if (ui.tab === "oral" && ui.search.trim() === "") {
+  } else if (ui.tab === "oral" && ui.search.trim() === "" && !ui.allOraux) {
     if (k === "ArrowRight") { e.preventDefault(); partShift(1); }
     else if (k === "ArrowLeft") { e.preventDefault(); partShift(-1); }
   }
