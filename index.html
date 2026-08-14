@@ -197,6 +197,9 @@
   .write-area { flex: 1 1 auto; min-height: 0; font-size: 1.08rem; line-height: 1.75; resize: none; overflow-y: auto; }
   .write-foot { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
   .write-foot .muted b { color: var(--text); font-size: 1.02rem; }
+  .wc-ok { color: var(--success) !important; }
+  .wc-low { color: var(--warn-text) !important; }
+  .wc-over { color: var(--danger) !important; }
   .oral-timer { text-align: center; margin: 14px 0 12px; }
   .oral-timer .timer { font-size: 3rem; }
   body.writing .wrap { padding-bottom: 12px; }
@@ -545,6 +548,9 @@ const MODELES = [
 const VOCAB_URL = "https://tcf-vocab-practice.vercel.app";
 const DUREE_DEFAUT = { 1: 15, 2: 20, 3: 25 };   // écrit : minutes indicatives par tâche (≈ 60 min au total)
 const DUREE_ORAL = { 1: 2, 2: 6, 3: 7 };          // oral : minutes indicatives par tâche
+const MOTS_ECRIT = { 1: [60, 120], 2: [120, 150], 3: [120, 180] };   // écrit : min/max de mots par tâche
+function motsRange(tache) { return MOTS_ECRIT[tache] || null; }
+function wcClass(n, r) { return !r ? "" : (n < r[0] ? "wc-low" : n > r[1] ? "wc-over" : "wc-ok"); }
 function dureeFor(mode, tache) { return (mode === "oral" ? DUREE_ORAL : DUREE_DEFAUT)[tache] || 15; }
 let timerInterval = null;
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -616,7 +622,9 @@ function updateTimer() {
 function updateCounts() {
   const w = $("#wcWords"), c = $("#wcChars"); if (!w) return;
   const ta = $("#writeArea"); const v = ta ? ta.value : "";
-  w.textContent = countWords(v); c.textContent = v.length;
+  const n = countWords(v);
+  w.textContent = n; c.textContent = v.length;
+  w.className = wcClass(n, motsRange(ui.session && ui.session.tache));
 }
 function sizeWriteView() {
   const wv = document.querySelector(".write-view"); if (!wv) return;
@@ -632,7 +640,7 @@ function renderSentrainer() {
   // phase setup
   const oral = s.mode === "oral";
   const numVal = oral ? s.partie : s.combinaison;
-  const durInfo = oral ? "T1 ≈ 2 min · T2 ≈ 6 min · T3 ≈ 7 min (durées indicatives)" : "T1 ≈ 15 min · T2 ≈ 20 min · T3 ≈ 25 min (≈ 60 min au total au TCF).";
+  const durInfo = oral ? "T1 ≈ 2 min · T2 ≈ 6 min · T3 ≈ 7 min (durées indicatives)" : "Durées : T1 ≈ 15 min · T2 ≈ 20 min · T3 ≈ 25 min. Mots : T1 60–120 · T2 120–150 · T3 120–180.";
   app().innerHTML = `
     <div class="card">
       <h3>Nouvelle pratique</h3>
@@ -695,7 +703,7 @@ function renderWrite() {
       ${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : ""}
       <textarea id="writeArea" class="write-area" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" placeholder="Écris ici ta réponse à la consigne…">${esc(s.original)}</textarea>
       <div class="write-foot">
-        <span class="muted"><b id="wcWords">0</b> mots · <b id="wcChars">0</b> caractères</span>
+        <span class="muted"><b id="wcWords">0</b> mots ${(r => r ? `<span class="muted">/ ${r[0]}–${r[1]}</span>` : "")(motsRange(s.tache))} · <b id="wcChars">0</b> caractères</span>
         <div class="spacer"></div>
         <button class="btn ghost" data-action="session-cancel">Abandonner</button>
         <button class="btn primary" data-action="session-finish">Terminer ✓</button>
@@ -780,7 +788,11 @@ function renderEditor() {
     </div>`;
   const upd = () => {
     s.original = $("#e_original").value; s.corrige = $("#e_corrige").value;
-    $("#e_wc1").textContent = "· " + countWords(s.original) + " mots";
+    const range = oral ? null : motsRange(s.tache);
+    const n1 = countWords(s.original);
+    const w1 = $("#e_wc1");
+    w1.textContent = "· " + n1 + " mots" + (range ? " / " + range[0] + "–" + range[1] : "");
+    w1.className = "muted " + wcClass(n1, range);
     $("#e_wc2").textContent = "· " + countWords(s.corrige) + " mots";
     const sides = diffSides(s.original, s.corrige);
     $("#e_preview").innerHTML = s.corrige.trim() ? `
@@ -789,7 +801,7 @@ function renderEditor() {
         <div class="col corr"><div class="col-head"><span>Version corrigée</span></div><div class="texte-body">${sides.right}</div></div>
       </div>` : "";
   };
-  $("#e_tache").addEventListener("change", e => s.tache = Number(e.target.value));
+  $("#e_tache").addEventListener("change", e => { s.tache = Number(e.target.value); upd(); });
   $("#e_num").addEventListener("input", e => { if (s.mode === "oral") s.partie = e.target.value.trim(); else s.combinaison = e.target.value.trim(); });
   $("#e_mois").addEventListener("change", e => s.mois = Number(e.target.value));
   $("#e_annee").addEventListener("change", e => s.annee = Number(e.target.value));
