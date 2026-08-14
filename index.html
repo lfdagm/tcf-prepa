@@ -565,8 +565,10 @@ function scoreChip(x) {
 
 function setTab(t) {
   ui.showBilan = false;
+  if (ui.session && ui.session.standalone) ui.session = null;   // quitter l'éditeur « ajouter » en changeant d'onglet
   ui.tab = t; render();
 }
+function stdEditor() { return ui.session && ui.session.standalone && ui.session.phase === "correct"; }
 
 /* ============================================================
    Rendu
@@ -580,8 +582,8 @@ function render() {
   document.body.classList.toggle("writing", anyWriting && ui.session.mode !== "oral");
   if (!anyWriting) stopTimer();
   if (ui.tab === "sentrainer") renderSentrainer();
-  else if (ui.tab === "textes") renderTextes();
-  else if (ui.tab === "oral") renderOral();
+  else if (ui.tab === "textes") { if (stdEditor()) renderEditor(); else renderTextes(); }
+  else if (ui.tab === "oral") { if (stdEditor()) renderEditor(); else renderOral(); }
   else if (ui.tab === "cartes") { if (ui.showBilan) renderBilan(); else renderCartes(); }
   else if (ui.tab === "modeles") renderModeles();
   else if (ui.tab === "vocab") renderVocab();
@@ -1283,8 +1285,9 @@ function finishWriting() {
 // Ajouter une entrée (résultat fait hors plateforme) : va direct à l'éditeur, sans chrono.
 function startAdd(mode) {
   stopTimer();
-  ui.session = Object.assign(newSession(), { phase: "correct", mode: mode === "oral" ? "oral" : "ecrit" });
-  ui.tab = "sentrainer"; render();
+  const m = mode === "oral" ? "oral" : "ecrit";
+  ui.session = Object.assign(newSession(), { phase: "correct", mode: m, standalone: true });
+  ui.tab = m === "oral" ? "oral" : "textes"; render();
 }
 // Modifier une entrée existante (écrit ou oral) dans le même éditeur.
 function startEditEntry(mode, id) {
@@ -1292,14 +1295,14 @@ function startEditEntry(mode, id) {
   const oral = mode === "oral";
   const t = (oral ? store.oraux : store.textes).find(x => x.id === id); if (!t) return;
   ui.session = {
-    phase: "correct", mode: oral ? "oral" : "ecrit", editingId: id, tache: t.tache,
+    phase: "correct", standalone: true, mode: oral ? "oral" : "ecrit", editingId: id, tache: t.tache,
     annee: t.annee || curYear(), mois: t.mois || curMonth(),
     combinaison: oral ? "" : (t.combinaison ?? ""), partie: oral ? (t.partie ?? "") : "",
     consigne: t.consigne || "", original: (oral ? t.transcription : t.original) || "", corrige: t.corrige || "",
     score: t.score ?? "", niveau: t.niveau || "", feedback: t.feedback || "",
     timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0
   };
-  ui.tab = "sentrainer"; render();
+  ui.tab = oral ? "oral" : "textes"; render();
 }
 function saveSession() {
   const s = ui.session;
