@@ -861,6 +861,8 @@ function renderTextes() {
         <option value="3"${ui.tFilter === "3" ? " selected" : ""}>Tâche 3</option>
       </select>
       <input class="search" id="searchInput" type="text" placeholder="Rechercher partout…" value="${esc(ui.search)}">
+      <div class="spacer"></div>
+      <button class="btn primary" data-action="new-texte">+ Écrit</button>
     </div>
     ${(searching || showAll) ? `<p class="muted" style="font-size:.85rem;margin:8px 2px 0">${searching ? "🔎 Recherche sur tous les mois." : `📂 Toutes les combinaisons · ${list.length} texte${list.length > 1 ? "s" : ""}`}</p>`
       : (combos.length ? `
@@ -1037,57 +1039,6 @@ function renderOral() {
   if (tf) tf.addEventListener("change", e => { ui.tFilter = e.target.value; renderOral(); });
   const ms = $("#oMonthSel");
   if (ms) ms.addEventListener("change", e => { if (e.target.value === "all") { ui.allOraux = true; } else { const [y, m] = e.target.value.split("-").map(Number); ui.allOraux = false; ui.oPeriodY = y; ui.oPeriodM = m; ui.oPartIdx = 0; } renderOral(); });
-}
-
-function oralForm(o) {
-  const e = o || { tache: 1, annee: curYear(), mois: curMonth(), partie: "", consigne: "", transcription: "", corrige: "", score: "", niveau: "", feedback: "", note: "" };
-  openModal(`
-    <h2>${o ? "Modifier la pratique orale" : "Nouvelle pratique orale"}</h2>
-    <div class="row" style="margin-top:6px">
-      <label class="field" style="flex:1"><span>Tâche</span><select id="o_tache"><option value="1"${e.tache == 1 ? " selected" : ""}>Tâche 1</option><option value="2"${e.tache == 2 ? " selected" : ""}>Tâche 2</option><option value="3"${e.tache == 3 ? " selected" : ""}>Tâche 3</option></select></label>
-      <label class="field" style="flex:1"><span>Partie</span><input type="text" inputmode="numeric" id="o_partie" value="${esc(String(e.partie ?? ""))}" placeholder="ex. 1"></label>
-    </div>
-    <div class="row">
-      <label class="field" style="flex:2"><span>Mois</span><select id="o_mois">${MOIS.map((m, i) => `<option value="${i + 1}"${e.mois == i + 1 ? " selected" : ""}>${m}</option>`).join("")}</select></label>
-      <label class="field" style="flex:1"><span>Année</span><select id="o_annee">${anneesList().map(a => `<option value="${a}"${e.annee == a ? " selected" : ""}>${a}</option>`).join("")}</select></label>
-    </div>
-    <label class="field"><span>Consigne</span><textarea id="o_consigne">${esc(e.consigne)}</textarea></label>
-    <label class="field"><span>Transcription (ta réponse orale)</span><textarea id="o_transcription" class="big">${esc(e.transcription)}</textarea></label>
-    <label class="field"><span>Version corrigée</span><textarea id="o_corrige" class="big">${esc(e.corrige)}</textarea></label>
-    <div class="row">
-      <label class="field" style="flex:1"><span>Note estimée (sur 20)</span><input type="text" inputmode="decimal" id="o_score" value="${esc(String(e.score ?? ""))}" placeholder="ex. 13"></label>
-      <label class="field" style="flex:1"><span>Niveau CECR (facultatif)</span><input type="text" id="o_niveau" value="${esc(e.niveau || "")}" placeholder="ex. B1"></label>
-    </div>
-    <label class="field"><span>Corrections de ChatGPT — tableau (facultatif, pour cartes + feedback)</span><textarea id="o_feedback">${esc(e.feedback || "")}</textarea></label>
-    <label class="field"><span>Remarque (facultatif)</span><textarea id="o_note">${esc(e.note)}</textarea></label>
-    <div class="modal-actions">
-      <button class="btn primary" data-action="save-oral" data-id="${o ? o.id : ""}">Enregistrer</button>
-      <button class="btn ghost" data-action="cancel">Annuler</button>
-    </div>`);
-}
-function saveOral(id) {
-  const data = {
-    tache: Number($("#o_tache").value),
-    annee: Number($("#o_annee").value),
-    mois: Number($("#o_mois").value),
-    partie: $("#o_partie").value.trim(),
-    consigne: $("#o_consigne").value.trim(),
-    transcription: $("#o_transcription").value,
-    corrige: $("#o_corrige").value,
-    score: $("#o_score").value.trim(),
-    niveau: $("#o_niveau").value.trim(),
-    feedback: $("#o_feedback").value.trim(),
-    note: $("#o_note").value.trim()
-  };
-  if (!data.transcription.trim() && !data.corrige.trim()) { alert("Ajoute au moins la transcription ou la correction."); return; }
-  let obj;
-  if (id) { obj = store.oraux.find(x => x.id === id); Object.assign(obj, data); }
-  else { obj = Object.assign({ id: uid(), date: todayISO() }, data); store.oraux.unshift(obj); }
-  save(); closeModal(); ui.tab = "oral"; render(); toast("Pratique orale enregistrée ✔");
-  if (data.feedback) {
-    const cands = parseTable(data.feedback);
-    if (cands.length) { tblCtx = { source: oralLabel(obj), texteId: null, oralId: obj.id }; candReviewForm(cands); }
-  }
 }
 
 /* ---------- Onglet Modèles ---------- */
@@ -1329,10 +1280,25 @@ function finishWriting() {
   if (ui.session.startMs) ui.session.tempsSec = Math.floor((Date.now() - ui.session.startMs) / 1000);
   stopTimer(); ui.session.phase = "correct"; render();
 }
-function startEdit(id) {
-  const t = store.textes.find(x => x.id === id); if (!t) return;
+// Ajouter une entrée (résultat fait hors plateforme) : va direct à l'éditeur, sans chrono.
+function startAdd(mode) {
   stopTimer();
-  ui.session = { phase: "correct", editingId: id, tache: t.tache, annee: t.annee || curYear(), mois: t.mois || curMonth(), combinaison: t.combinaison ?? "", consigne: t.consigne || "", original: t.original || "", corrige: t.corrige || "", score: t.score ?? "", niveau: t.niveau || "", feedback: t.feedback || "", timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0 };
+  ui.session = Object.assign(newSession(), { phase: "correct", mode: mode === "oral" ? "oral" : "ecrit" });
+  ui.tab = "sentrainer"; render();
+}
+// Modifier une entrée existante (écrit ou oral) dans le même éditeur.
+function startEditEntry(mode, id) {
+  stopTimer();
+  const oral = mode === "oral";
+  const t = (oral ? store.oraux : store.textes).find(x => x.id === id); if (!t) return;
+  ui.session = {
+    phase: "correct", mode: oral ? "oral" : "ecrit", editingId: id, tache: t.tache,
+    annee: t.annee || curYear(), mois: t.mois || curMonth(),
+    combinaison: oral ? "" : (t.combinaison ?? ""), partie: oral ? (t.partie ?? "") : "",
+    consigne: t.consigne || "", original: (oral ? t.transcription : t.original) || "", corrige: t.corrige || "",
+    score: t.score ?? "", niveau: t.niveau || "", feedback: t.feedback || "",
+    timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0
+  };
   ui.tab = "sentrainer"; render();
 }
 function saveSession() {
@@ -1377,9 +1343,12 @@ function saveSession() {
   }
 }
 function cancelSession() {
-  if (ui.session && ui.session.phase === "write" && (ui.session.original || "").trim() && !confirm("Abandonner ce texte ? Ce que tu as écrit sera perdu.")) return;
-  stopTimer(); const wasEdit = ui.session && ui.session.editingId; ui.session = null;
-  ui.tab = wasEdit ? "textes" : "sentrainer"; render();
+  const s = ui.session;
+  if (s && s.phase === "write" && (s.original || "").trim() && !confirm("Abandonner ce texte ? Ce que tu as écrit sera perdu.")) return;
+  stopTimer();
+  let dest = "sentrainer";
+  if (s && s.phase === "correct") dest = s.mode === "oral" ? "oral" : "textes";
+  ui.session = null; ui.tab = dest; render();
 }
 
 // Analyse une « fiche d'expression » ChatGPT (Expression / Signification / Exemple / À éviter / Remarque…)
@@ -1650,8 +1619,8 @@ document.body.addEventListener("click", e => {
   const a = el.dataset.action, id = el.dataset.id;
 
   switch (a) {
-    case "new-texte": stopTimer(); ui.session = newSession(); ui.tab = "sentrainer"; render(); break;
-    case "edit-texte": startEdit(id); break;
+    case "new-texte": startAdd("ecrit"); break;
+    case "edit-texte": startEditEntry("ecrit", id); break;
     case "del-texte": if (confirm("Supprimer ce texte ?")) { store.textes = store.textes.filter(t => t.id !== id); save(); render(); } break;
     case "carte-from": { const t = store.textes.find(t => t.id === id); carteForm(null, { source: sourceLabel(t), texteId: t.id }); break; }
     case "paste-from": { const t = store.textes.find(t => t.id === id); pasteTableForm({ source: sourceLabel(t), texteId: t.id }); break; }
@@ -1664,10 +1633,9 @@ document.body.addEventListener("click", e => {
     case "comb-prev": combShift(-1); break;
     case "comb-next": combShift(1); break;
 
-    case "new-oral": oralForm(null); break;
-    case "edit-oral": oralForm(store.oraux.find(o => o.id === id)); break;
+    case "new-oral": startAdd("oral"); break;
+    case "edit-oral": startEditEntry("oral", id); break;
     case "del-oral": if (confirm("Supprimer cette pratique orale ?")) { store.oraux = store.oraux.filter(o => o.id !== id); save(); render(); } break;
-    case "save-oral": saveOral(id); break;
     case "paste-from-oral": { const o = store.oraux.find(o => o.id === id); pasteTableForm({ source: oralLabel(o), texteId: null, oralId: o.id }); break; }
     case "part-prev": partShift(-1); break;
     case "part-next": partShift(1); break;
