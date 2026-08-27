@@ -598,7 +598,7 @@ function render() {
 
 /* ---------- Onglet S'entraîner (écriture + timer) ---------- */
 function newSession() {
-  return { phase: "setup", mode: "ecrit", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", partie: "", consigne: "", original: "", corrige: "", score: "", niveau: "", feedback: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, tempsSec: 0 };
+  return { phase: "setup", mode: "ecrit", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", partie: "", consigne: "", original: "", corrige: "", score: "", niveau: "", feedback: "", solution: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, tempsSec: 0 };
 }
 function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
 function startTimer() {
@@ -780,6 +780,7 @@ function renderEditor() {
       </div>
       <textarea id="e_cards" class="big" placeholder="Colle ici toute la réponse de ChatGPT, puis clique « ⚡ Répartir » : la note, la version corrigée et le tableau se placent tout seuls.">${esc(s.feedback || "")}</textarea>
       <p class="muted" style="font-size:.8rem;margin:4px 0 0">Le tableau CORRECTIONS sert à créer les cartes et reste comme feedback du texte.</p>
+      <label class="field"><span>Exemple modèle — solution proposée par ChatGPT (facultatif) <span class="muted" id="e_wc3"></span></span><textarea id="e_solution" class="big" placeholder="Colle ici un exemple de réponse « modèle » (ce que tu aurais pu écrire), pour t'en inspirer.">${esc(s.solution || "")}</textarea></label>
       <div id="e_preview"></div>
       <div class="modal-actions">
         <button class="btn primary" data-action="session-save">${(s.corrige || isEdit) ? "Enregistrer" : "Enregistrer (correction plus tard)"}</button>
@@ -794,6 +795,7 @@ function renderEditor() {
     w1.textContent = "· " + n1 + " mots" + (range ? " / " + range[0] + "–" + range[1] : "");
     w1.className = "muted " + wcClass(n1, range);
     $("#e_wc2").textContent = "· " + countWords(s.corrige) + " mots";
+    const sol = $("#e_solution"); if (sol) { const w3 = $("#e_wc3"); const n3 = countWords(sol.value); w3.textContent = n3 ? "· " + n3 + " mots" + (range ? " / " + range[0] + "–" + range[1] : "") : ""; w3.className = "muted " + wcClass(n3, range); }
     const sides = diffSides(s.original, s.corrige);
     $("#e_preview").innerHTML = s.corrige.trim() ? `
       <div class="sbs">
@@ -809,6 +811,7 @@ function renderEditor() {
   $("#e_original").addEventListener("input", upd);
   $("#e_corrige").addEventListener("input", upd);
   $("#e_cards").addEventListener("input", e => s.feedback = e.target.value);
+  $("#e_solution").addEventListener("input", e => { s.solution = e.target.value; upd(); });
   $("#e_score").addEventListener("input", e => s.score = e.target.value);
   $("#e_niveau").addEventListener("input", e => s.niveau = e.target.value);
   upd();
@@ -931,6 +934,7 @@ function renderTextes() {
         </div>
         <div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-texte" data-id="${t.id}">＋ Ajouter la correction</button></div>`}
         ${renderFeedbackTable(t.feedback)}
+        ${renderSolution(t.solution)}
       </div>`;
     }
   }
@@ -1042,6 +1046,7 @@ function renderOral() {
         <div class="col" style="margin-top:12px"><div class="col-head"><span>Transcription</span><span class="wc">${countWords(o.transcription)} mots</span></div><div class="texte-body">${esc(o.transcription)}</div></div>
         <div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-oral" data-id="${o.id}">＋ Ajouter la correction</button></div>`}
         ${renderFeedbackTable(o.feedback)}
+        ${renderSolution(o.solution)}
         ${o.note ? `<p class="muted" style="font-size:.88rem;margin:10px 0 0">🗒️ ${esc(o.note)}</p>` : ""}
       </div>`;
     }
@@ -1229,6 +1234,7 @@ function sourceModal(cardId) {
       <div class="col corr"><div class="col-head"><span>Version corrigée</span></div><div class="texte-body">${sides.right}</div></div>
     </div>` : `<div class="texte-body" style="margin-top:8px">${esc(orig)}</div>`}
     ${renderFeedbackTable(src.feedback)}
+    ${renderSolution(src.solution)}
     <div class="modal-actions"><button class="btn ghost" data-action="cancel">Fermer</button></div>`);
 }
 function monthCombos() { const mt = store.textes.filter(t => Number(t.annee) === ui.periodY && Number(t.mois) === ui.periodM); return [...new Set(mt.map(t => String(t.combinaison ?? "")))]; }
@@ -1311,7 +1317,7 @@ function startEditEntry(mode, id) {
     annee: t.annee || curYear(), mois: t.mois || curMonth(),
     combinaison: oral ? "" : (t.combinaison ?? ""), partie: oral ? (t.partie ?? "") : "",
     consigne: t.consigne || "", original: (oral ? t.transcription : t.original) || "", corrige: t.corrige || "",
-    score: t.score ?? "", niveau: t.niveau || "", feedback: t.feedback || "",
+    score: t.score ?? "", niveau: t.niveau || "", feedback: t.feedback || "", solution: t.solution || "",
     timerMode: "down", durationMin: DUREE_DEFAUT[t.tache] || 20, startMs: null, tempsSec: t.tempsSec || 0
   };
   ui.tab = oral ? "oral" : "textes"; render();
@@ -1325,6 +1331,7 @@ function saveSession() {
   s.score = ($("#e_score") || {}).value ?? s.score;
   s.niveau = ($("#e_niveau") || {}).value ?? s.niveau;
   s.feedback = ($("#e_cards") || {}).value ?? s.feedback;
+  s.solution = ($("#e_solution") || {}).value ?? s.solution;
   // si l'utilisateur a collé toute la réponse sans « Répartir », on répartit ici
   const r = extractResponse(s.feedback || "");
   if (r.table && (r.corrige || r.score)) {
@@ -1335,7 +1342,7 @@ function saveSession() {
   }
   if (!s.original.trim() && !s.corrige.trim()) { alert("Ajoute au moins la réponse ou la correction."); return; }
   const feedback = (s.feedback || "").trim();
-  const common = { tache: s.tache, annee: s.annee, mois: s.mois, consigne: s.consigne.trim(), corrige: s.corrige, score: String(s.score).trim(), niveau: (s.niveau || "").trim(), feedback, tempsSec: s.tempsSec || 0 };
+  const common = { tache: s.tache, annee: s.annee, mois: s.mois, consigne: s.consigne.trim(), corrige: s.corrige, score: String(s.score).trim(), niveau: (s.niveau || "").trim(), feedback, solution: (s.solution || "").trim(), tempsSec: s.tempsSec || 0 };
   const oral = s.mode === "oral";
   let obj;
   if (oral) {
@@ -1544,6 +1551,11 @@ function renderFeedbackTable(feedback) {
     <table class="fb-table"><thead><tr><th>Cat.</th><th>❌ éviter</th><th>✅ mieux</th><th>Explication</th></tr></thead><tbody>
     ${rows.map(r => `<tr><td>${esc(r.tipo || "")}</td><td class="fb-ko">${esc(r.avant)}</td><td class="fb-ok">${esc(r.apres)}</td><td>${esc(r.note)}</td></tr>`).join("")}
     </tbody></table></details>`;
+}
+// Rendu HTML de l'exemple modèle (solution) — replié
+function renderSolution(sol) {
+  if (!(sol || "").trim()) return "";
+  return `<details class="fb"><summary>📗 Exemple modèle · ${countWords(sol)} mots</summary><div class="texte-body" style="margin-top:8px">${esc(sol)}</div></details>`;
 }
 function pasteTableForm(prefill) {
   tblCtx = Object.assign({ source: "", texteId: null, oralId: null }, prefill || {});
