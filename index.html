@@ -160,9 +160,12 @@
   .diff-legend .k { display: inline-flex; align-items: center; gap: 5px; }
   .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   .sbs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-  @media (max-width: 640px) { .sbs { grid-template-columns: 1fr; } }
+  .sbs.cols-1 { grid-template-columns: 1fr; }
+  .sbs.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 720px) { .sbs, .sbs.cols-3 { grid-template-columns: 1fr; } }
   .col { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; }
   .col.corr { border-color: var(--success-border); }
+  .col.sol { border-color: var(--accent); }
   details.fb { margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); padding: 4px 12px; }
   details.fb summary { cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--text-muted); padding: 6px 0; }
   details.fb[open] summary { color: var(--text); }
@@ -797,12 +800,8 @@ function renderEditor() {
     w1.className = "muted " + wcClass(n1, range);
     $("#e_wc2").textContent = "· " + countWords(s.corrige) + " mots";
     const sol = $("#e_solution"); if (sol) { const w3 = $("#e_wc3"); const n3 = countWords(sol.value); w3.textContent = n3 ? "· " + n3 + " mots" + (range ? " / " + range[0] + "–" + range[1] : "") : ""; w3.className = "muted " + wcClass(n3, range); }
-    const sides = diffSides(s.original, s.corrige);
-    $("#e_preview").innerHTML = s.corrige.trim() ? `
-      <div class="sbs">
-        <div class="col"><div class="col-head"><span>${leftHead}</span></div><div class="texte-body">${sides.left}</div></div>
-        <div class="col corr"><div class="col-head"><span>Version corrigée</span></div><div class="texte-body">${sides.right}</div></div>
-      </div>` : "";
+    const showPrev = (s.corrige || "").trim() || (s.solution || "").trim();
+    $("#e_preview").innerHTML = showPrev ? compareCols(s.original, s.corrige, s.solution, leftHead) : "";
   };
   $("#e_tache").addEventListener("change", e => { s.tache = Number(e.target.value); upd(); });
   $("#e_num").addEventListener("input", e => { if (s.mode === "oral") s.partie = e.target.value.trim(); else s.combinaison = e.target.value.trim(); });
@@ -916,26 +915,10 @@ function renderTextes() {
           <button class="btn ghost sm" data-action="del-texte" data-id="${t.id}">Suppr.</button>
         </div>
         ${t.consigne ? `<div class="consigne">${esc(t.consigne)}</div>` : ""}
-        ${hasCorr ? `
-        <div class="sbs">
-          <div class="col">
-            <div class="col-head"><span>Ma version</span><span class="wc">${countWords(t.original)} mots</span></div>
-            <div class="texte-body">${sides.left}</div>
-          </div>
-          <div class="col corr">
-            <div class="col-head"><span>Version corrigée</span><span class="wc">${countWords(t.corrige)} mots</span></div>
-            <div class="texte-body">${sides.right}</div>
-          </div>
-        </div>
-        <div class="diff-legend"><span class="k"><span class="dot" style="background:var(--del-bg)"></span> retiré (ma version)</span><span class="k"><span class="dot" style="background:var(--ins-bg)"></span> ajouté / corrigé (version corrigée)</span></div>`
-        : `
-        <div class="col" style="margin-top:12px">
-          <div class="col-head"><span>Ma version</span><span class="wc">${countWords(t.original)} mots</span></div>
-          <div class="texte-body">${esc(t.original)}</div>
-        </div>
-        <div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-texte" data-id="${t.id}">＋ Ajouter la correction</button></div>`}
+        ${compareCols(t.original, t.corrige, t.solution, "Ma version")}
+        ${hasCorr ? `<div class="diff-legend"><span class="k"><span class="dot" style="background:var(--del-bg)"></span> retiré (ma version)</span><span class="k"><span class="dot" style="background:var(--ins-bg)"></span> ajouté / corrigé (version corrigée)</span></div>`
+        : `<div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-texte" data-id="${t.id}">＋ Ajouter la correction</button></div>`}
         ${renderFeedbackTable(t.feedback)}
-        ${renderSolution(t.solution)}
       </div>`;
     }
   }
@@ -1037,17 +1020,10 @@ function renderOral() {
           <button class="btn ghost sm" data-action="del-oral" data-id="${o.id}">Suppr.</button>
         </div>
         ${o.consigne ? `<div class="consigne">${esc(o.consigne)}</div>` : ""}
-        ${hasCorr ? `
-        <div class="sbs">
-          <div class="col"><div class="col-head"><span>Transcription</span><span class="wc">${countWords(o.transcription)} mots</span></div><div class="texte-body">${sides.left}</div></div>
-          <div class="col corr"><div class="col-head"><span>Version corrigée</span><span class="wc">${countWords(o.corrige)} mots</span></div><div class="texte-body">${sides.right}</div></div>
-        </div>
-        <div class="diff-legend"><span class="k"><span class="dot" style="background:var(--del-bg)"></span> retiré</span><span class="k"><span class="dot" style="background:var(--ins-bg)"></span> ajouté / corrigé</span></div>`
-        : `
-        <div class="col" style="margin-top:12px"><div class="col-head"><span>Transcription</span><span class="wc">${countWords(o.transcription)} mots</span></div><div class="texte-body">${esc(o.transcription)}</div></div>
-        <div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-oral" data-id="${o.id}">＋ Ajouter la correction</button></div>`}
+        ${compareCols(o.transcription, o.corrige, o.solution, "Transcription")}
+        ${hasCorr ? `<div class="diff-legend"><span class="k"><span class="dot" style="background:var(--del-bg)"></span> retiré</span><span class="k"><span class="dot" style="background:var(--ins-bg)"></span> ajouté / corrigé</span></div>`
+        : `<div class="row" style="margin-top:10px"><span class="chip t3">⏳ Correction en attente</span><button class="btn sm" data-action="edit-oral" data-id="${o.id}">＋ Ajouter la correction</button></div>`}
         ${renderFeedbackTable(o.feedback)}
-        ${renderSolution(o.solution)}
         ${o.note ? `<p class="muted" style="font-size:.88rem;margin:10px 0 0">🗒️ ${esc(o.note)}</p>` : ""}
       </div>`;
     }
@@ -1229,13 +1205,8 @@ function sourceModal(cardId) {
       <span class="muted" style="font-size:.82rem">${fmtDate(src.date)}</span>
     </div>
     ${src.consigne ? `<div class="consigne" style="margin-top:8px">${esc(src.consigne)}</div>` : ""}
-    ${hasCorr ? `
-    <div class="sbs">
-      <div class="col"><div class="col-head"><span>${leftHead}</span></div><div class="texte-body">${sides.left}</div></div>
-      <div class="col corr"><div class="col-head"><span>Version corrigée</span></div><div class="texte-body">${sides.right}</div></div>
-    </div>` : `<div class="texte-body" style="margin-top:8px">${esc(orig)}</div>`}
+    ${compareCols(orig, src.corrige, src.solution, leftHead)}
     ${renderFeedbackTable(src.feedback)}
-    ${renderSolution(src.solution)}
     <div class="modal-actions"><button class="btn ghost" data-action="cancel">Fermer</button></div>`);
 }
 function monthCombos() { const mt = store.textes.filter(t => Number(t.annee) === ui.periodY && Number(t.mois) === ui.periodM); return [...new Set(mt.map(t => String(t.combinaison ?? "")))]; }
@@ -1553,10 +1524,17 @@ function renderFeedbackTable(feedback) {
     ${rows.map(r => `<tr><td>${esc(r.tipo || "")}</td><td class="fb-ko">${esc(r.avant)}</td><td class="fb-ok">${esc(r.apres)}</td><td>${esc(r.note)}</td></tr>`).join("")}
     </tbody></table></details>`;
 }
-// Rendu HTML de l'exemple modèle (solution) — replié
-function renderSolution(sol) {
-  if (!(sol || "").trim()) return "";
-  return `<details class="fb"><summary>📗 Exemple modèle · ${countWords(sol)} mots</summary><div class="texte-body" style="margin-top:8px">${esc(sol)}</div></details>`;
+// (l'exemple modèle est désormais affiché en colonne, voir compareCols)
+// Colonnes côte à côte : Ma version / Version corrigée / Exemple modèle (selon ce qui existe)
+function compareCols(original, corrige, solution, leftHead) {
+  const hasCorr = (corrige || "").trim().length > 0;
+  const hasSol = (solution || "").trim().length > 0;
+  const sides = diffSides(original, corrige);
+  const cols = [];
+  cols.push(`<div class="col"><div class="col-head"><span>${leftHead}</span><span class="wc">${countWords(original)} mots</span></div><div class="texte-body">${hasCorr ? sides.left : esc(original)}</div></div>`);
+  if (hasCorr) cols.push(`<div class="col corr"><div class="col-head"><span>Version corrigée</span><span class="wc">${countWords(corrige)} mots</span></div><div class="texte-body">${sides.right}</div></div>`);
+  if (hasSol) cols.push(`<div class="col sol"><div class="col-head"><span>📗 Exemple modèle</span><span class="wc">${countWords(solution)} mots</span></div><div class="texte-body">${esc(solution)}</div></div>`);
+  return `<div class="sbs cols-${cols.length}">${cols.join("")}</div>`;
 }
 function pasteTableForm(prefill) {
   tblCtx = Object.assign({ source: "", texteId: null, oralId: null }, prefill || {});
