@@ -767,6 +767,7 @@ function renderEditor() {
       </div>
       <label class="field"><span>Consigne</span><textarea id="e_consigne">${esc(s.consigne)}</textarea></label>
       <label class="field"><span>${origLabel} <span class="muted" id="e_wc1"></span></span><textarea id="e_original" class="big" placeholder="${oral ? "Colle ici la transcription de ta réponse…" : ""}">${esc(s.original)}</textarea></label>
+      <div class="row" style="margin-top:4px"><button type="button" class="btn sm" data-action="copy-cr">📋 Copier consigne + réponse</button></div>
       <label class="field"><span>Version corrigée — colle la correction de ChatGPT <span class="muted" id="e_wc2"></span></span><textarea id="e_corrige" class="big" placeholder="Colle ici la version corrigée…">${esc(s.corrige)}</textarea></label>
       <div class="row">
         <label class="field" style="flex:1"><span>Note estimée (sur 20)</span><input type="text" inputmode="decimal" id="e_score" value="${esc(String(s.score ?? ""))}" placeholder="ex. 14"></label>
@@ -1656,6 +1657,7 @@ document.body.addEventListener("click", e => {
     case "copy-prompt": { const done = () => toast("Prompt copié ✔"); if (navigator.clipboard) navigator.clipboard.writeText(STD_PROMPT).then(done).catch(() => alert(STD_PROMPT)); else alert(STD_PROMPT); break; }
     case "distribute": distributeResponse(); break;
     case "distribute-carte": distributeCarteForm(); break;
+    case "copy-cr": { const cons = ($("#e_consigne") || {}).value || ""; const rep = ($("#e_original") || {}).value || ""; const oral = ui.session && ui.session.mode === "oral"; const txt = `Consigne :\n${cons}\n\nMa ${oral ? "réponse (transcription)" : "réponse"} :\n${rep}`; const done = () => toast("Copié ✔"); if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done).catch(() => alert(txt)); else alert(txt); break; }
     case "save-cands": saveCands(Number(el.dataset.count)); break;
     case "comb-prev": combShift(-1); break;
     case "comb-next": combShift(1); break;
