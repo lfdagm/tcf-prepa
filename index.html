@@ -359,16 +359,25 @@ const typeLabel = v => (TYPES.find(t => t.v === v) || { l: v }).l;
 
 // Prompt standard à donner à ChatGPT : renvoie un tableau que l'app importe directement,
 // avec une colonne « Catégorie » qui classe chaque correction (→ cartes + Bilan).
-const STD_PROMPT = `Tu es examinateur du TCF Canada (expression écrite ou orale). Tu m'aides à préparer l'examen, niveau visé B2. Je colle la consigne puis mon texte (ou la transcription de ma réponse orale). Réponds UNIQUEMENT avec ces trois blocs, dans cet ordre, sans autre commentaire :
+const STD_PROMPT = `Tu es examinateur du TCF Canada (expression écrite ou orale). Corrige mon texte et réponds EXACTEMENT dans ce format, SANS numéroter les titres et sans autre commentaire :
 
-1) Première ligne : une note estimée sur 20 et le niveau CECR, exactement ainsi :
 Note : 14/20 (B2)
 
-2) Sous le titre « VERSION CORRIGÉE : », réécris mon texte corrigé en entier (garde ma longueur et mes idées, mais un français correct et naturel de niveau B2).
+VERSION CORRIGÉE :
+(le texte corrigé en entier, uniquement le texte — n'ajoute aucun compte de mots)
 
-3) Sous le titre « CORRECTIONS : », un tableau Markdown, une ligne par correction (fautes ET tournures peu naturelles), avec exactement cet en-tête :
+CORRECTIONS :
 | Catégorie | ❌ À éviter | ✅ Mieux | Explication courte | Exemple correct |
-La colonne Catégorie doit être l'une de : expression, conjugaison, grammaire, préposition, vocabulaire, connecteur, orthographe.
+| --- | --- | --- | --- | --- |
+| préposition | exemple d'erreur | version correcte | explication brève | phrase correcte |
+
+EXEMPLE MODÈLE :
+(une réponse modèle complète au sujet, niveau B2)
+
+Règles importantes :
+- Garde les titres EXACTEMENT « VERSION CORRIGÉE : », « CORRECTIONS : », « EXEMPLE MODÈLE : » (aucun numéro devant).
+- Le tableau CORRECTIONS doit utiliser des barres verticales | (Markdown), une ligne par correction.
+- Catégorie ∈ {expression, conjugaison, grammaire, préposition, vocabulaire, connecteur, orthographe}.
 
 Consigne :
 [colle ici la consigne]
@@ -823,6 +832,7 @@ function distributeResponse() {
   if (r.score) s.score = r.score;
   if (r.niveau) s.niveau = r.niveau;
   if (r.corrige) s.corrige = r.corrige;
+  if (r.solution) s.solution = r.solution;
   s.feedback = r.table;
   renderEditor();
   toast("Réparti ✔");
@@ -1306,11 +1316,12 @@ function saveSession() {
   s.solution = ($("#e_solution") || {}).value ?? s.solution;
   // si l'utilisateur a collé toute la réponse sans « Répartir », on répartit ici
   const r = extractResponse(s.feedback || "");
-  if (r.table && (r.corrige || r.score)) {
+  if (r.corrige || r.score || r.niveau || r.solution) {
     if (!String(s.corrige || "").trim() && r.corrige) s.corrige = r.corrige;
     if (!String(s.score || "").trim() && r.score) s.score = r.score;
     if (!String(s.niveau || "").trim() && r.niveau) s.niveau = r.niveau;
-    s.feedback = r.table;
+    if (!String(s.solution || "").trim() && r.solution) s.solution = r.solution;
+    if (r.table) s.feedback = r.table;
   }
   if (!s.original.trim() && !s.corrige.trim()) { alert("Ajoute au moins la réponse ou la correction."); return; }
   const feedback = (s.feedback || "").trim();
@@ -1430,6 +1441,7 @@ function splitCells(t) {
   else if (t.includes("\t")) cells = t.split("\t");
   else if (t.includes("→")) cells = t.split("→");
   else if (t.includes("->")) cells = t.split("->");
+  else if (/\S {2,}\S/.test(t)) cells = t.split(/ {2,}/);   // colonnes séparées par 2+ espaces
   else return null;
   cells = cells.map(c => c.trim());
   while (cells.length && cells[0] === "") cells.shift();
@@ -1499,20 +1511,33 @@ function parseExpressions(raw) {
   }
   return out;
 }
-// Sépare une réponse ChatGPT complète en { score, niveau, corrige, table }
+// enlève les lignes parasites d'un bloc de texte (compte de mots…)
+function cleanBlock(s) {
+  return (s || "").split(/\r?\n/).filter(l => !/^\s*(nombre\s+de\s+mots|word\s+count|mots?\s*:)/i.test(l)).join("\n").trim();
+}
+// en-tête de section : tolère un préfixe « 2. » / « 3) » / gras / émojis avant le mot-clé
+function hdrMatch(raw, kw) { return raw.match(new RegExp("^[^\\S\\n]*(?:\\d+[.)]\\s*)?\\**\\s*" + kw + "[^\\n]*$", "im")); }
+// Sépare une réponse ChatGPT complète en { score, niveau, corrige, table, solution }
 function extractResponse(raw) {
   raw = raw || "";
-  const out = { score: "", niveau: "", corrige: "", table: raw.trim() };
+  const out = { score: "", niveau: "", corrige: "", table: raw.trim(), solution: "" };
   const noteM = raw.match(/note\s*:?\s*\**\s*(\d+(?:[.,]\d+)?)\s*\/\s*20\s*(?:\(([^)]+)\))?/i);
   if (noteM) { out.score = noteM[1].replace(",", "."); out.niveau = (noteM[2] || "").trim(); }
-  const vcM = raw.match(/^[^\S\n]*\**\s*version\s+corrig[ée]+\s*\**[^\S\n]*:?[^\S\n]*$/im);
-  const corrM = raw.match(/^[^\S\n]*\**\s*corrections?\s*\**[^\S\n]*:?[^\S\n]*$/im);
-  const vcEnd = vcM ? vcM.index + vcM[0].length : -1;
-  const corrStart = corrM ? corrM.index : -1;
-  const corrEnd = corrM ? corrM.index + corrM[0].length : -1;
-  if (vcEnd >= 0) out.corrige = raw.slice(vcEnd, corrStart >= 0 ? corrStart : undefined).trim();
-  if (corrEnd >= 0) out.table = raw.slice(corrEnd).trim();
+  const vcM = hdrMatch(raw, "version\\s+corrig[ée]+");
+  const corrM = hdrMatch(raw, "corrections?");
+  const solM = hdrMatch(raw, "(?:exemple\\s+(?:de\\s+r[ée]ponse|mod[èe]le|b2)|r[ée]ponse\\s+mod[èe]le|solution\\s+mod[èe]le)");
+  const end = m => m ? m.index + m[0].length : -1;
+  const idx = m => m ? m.index : -1;
+  const vcEnd = end(vcM), corrStart = idx(corrM), corrEnd = end(corrM), solStart = idx(solM), solEnd = end(solM);
+  const nextAfter = (from) => {  // borne = prochain titre après `from`
+    let stop = raw.length;
+    for (const p of [corrStart, solStart]) if (p > from && p < stop) stop = p;
+    return stop;
+  };
+  if (vcEnd >= 0) out.corrige = cleanBlock(raw.slice(vcEnd, nextAfter(vcEnd)));
+  if (corrEnd >= 0) { let stop = raw.length; if (solStart > corrEnd) stop = solStart; out.table = raw.slice(corrEnd, stop).trim(); }
   else if (vcEnd >= 0) out.table = "";
+  if (solEnd >= 0) out.solution = cleanBlock(raw.slice(solEnd));
   return out;
 }
 // Rendu HTML du feedback (tableau replié) pour un texte / oral
