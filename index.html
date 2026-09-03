@@ -194,6 +194,7 @@
   .write-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 5px 10px; flex: 0 0 auto; }
   .timer { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .timer.over { color: var(--danger); }
+  .timer.paused { opacity: .45; }
   .timer.low { color: var(--warn-text); }
   .write-top .radio-pills button { padding: 3px 8px; font-size: .95rem; }
   .consigne-ref { background: var(--surface-2); border-left: 3px solid var(--primary); border-radius: var(--radius-sm); padding: 12px 15px; font-size: 1.02rem; line-height: 1.55; color: var(--text); white-space: pre-wrap; flex: 0 0 auto; max-height: 34vh; overflow-y: auto; }
@@ -610,25 +611,50 @@ function render() {
 
 /* ---------- Onglet S'entraîner (écriture + timer) ---------- */
 function newSession() {
-  return { phase: "setup", mode: "ecrit", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", partie: "", consigne: "", original: "", corrige: "", score: "", niveau: "", feedback: "", solution: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, tempsSec: 0 };
+  return { phase: "setup", mode: "ecrit", editingId: null, tache: 1, annee: curYear(), mois: curMonth(), combinaison: "", partie: "", consigne: "", original: "", corrige: "", score: "", niveau: "", feedback: "", solution: "", timerMode: "down", durationMin: DUREE_DEFAUT[1], startMs: null, elapsedBase: 0, paused: false, tempsSec: 0 };
 }
 function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
-function startTimer() {
+function timerElapsed() {
+  const s = ui.session; if (!s) return 0;
+  return Math.floor((s.elapsedBase || 0) + (s.startMs ? (Date.now() - s.startMs) / 1000 : 0));
+}
+function startTimer() {   // entrée en phase écriture / parole : lance le chrono (sauf si en pause)
   stopTimer();
-  if (!ui.session.startMs) ui.session.startMs = Date.now();
+  const s = ui.session; if (!s) return;
+  if (s.paused) { updateTimer(); return; }
+  if (!s.startMs) s.startMs = Date.now();
   updateTimer();
   timerInterval = setInterval(updateTimer, 1000);
 }
+function pauseTimer() {
+  const s = ui.session; if (!s || s.paused) return;
+  s.elapsedBase = timerElapsed(); s.startMs = null; s.paused = true;
+  stopTimer(); updateTimer(); updatePauseBtn();
+}
+function resumeTimer() {
+  const s = ui.session; if (!s || !s.paused) return;
+  s.paused = false; s.startMs = Date.now();
+  updateTimer(); stopTimer(); timerInterval = setInterval(updateTimer, 1000); updatePauseBtn();
+}
+function resetTimer() {
+  const s = ui.session; if (!s) return;
+  s.elapsedBase = 0; if (s.startMs) s.startMs = Date.now();
+  updateTimer();
+}
+function updatePauseBtn() {
+  const b = $("#pauseBtn"); if (b) b.textContent = (ui.session && ui.session.paused) ? "▶ Reprendre" : "⏸ Pause";
+}
 function fmtClock(sec) { const neg = sec < 0; const s = Math.abs(sec); return (neg ? "-" : "") + String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
 function updateTimer() {
-  const el = $("#timerDisplay"); if (!el || !ui.session || !ui.session.startMs) return;
-  const elapsed = Math.floor((Date.now() - ui.session.startMs) / 1000);
+  const el = $("#timerDisplay"); if (!el || !ui.session) return;
+  const elapsed = timerElapsed();
   let cls = "timer";
   if (ui.session.timerMode === "down") {
     const remain = ui.session.durationMin * 60 - elapsed;
     el.textContent = fmtClock(remain);
     if (remain <= 0) cls += " over"; else if (remain <= 60) cls += " low";
   } else { el.textContent = fmtClock(elapsed); }
+  if (ui.session.paused) cls += " paused";
   el.className = cls;
 }
 function updateCounts() {
@@ -743,7 +769,11 @@ function renderSpeak() {
         </div>
       </div>
       <div class="oral-timer"><span class="timer" id="timerDisplay">--:--</span></div>
-      ${s.consigne ? `<div class="consigne-ref" id="consigneRef">${esc(s.consigne)}</div>` : `<p class="muted" style="text-align:center">(pas de consigne)</p>`}
+      <div class="row" style="justify-content:center;gap:8px">
+        <button class="btn" id="pauseBtn" data-action="timer-pause">${s.paused ? "▶ Reprendre" : "⏸ Pause"}</button>
+        <button class="btn" data-action="timer-reset">↺ Réinitialiser</button>
+      </div>
+      ${s.consigne ? `<div class="consigne-ref" id="consigneRef" style="margin-top:12px">${esc(s.consigne)}</div>` : `<p class="muted" style="text-align:center">(pas de consigne)</p>`}
       <div class="row" style="margin-top:16px;align-items:center">
         <button class="btn ghost" data-action="session-cancel">Abandonner</button>
         <div class="spacer"></div>
@@ -1279,7 +1309,7 @@ function startWriting() {
 }
 function finishWriting() {
   const ta = $("#writeArea"); if (ta) ui.session.original = ta.value;
-  if (ui.session.startMs) ui.session.tempsSec = Math.floor((Date.now() - ui.session.startMs) / 1000);
+  ui.session.tempsSec = timerElapsed();
   stopTimer(); ui.session.phase = "correct"; render();
 }
 // Ajouter une entrée (résultat fait hors plateforme) : va direct à l'éditeur, sans chrono.
@@ -1676,6 +1706,8 @@ document.body.addEventListener("click", e => {
     case "setup-mode": ui.session.timerMode = el.dataset.mode; renderSentrainer(); break;
     case "session-write": startWriting(); break;
     case "timer-mode": ui.session.timerMode = el.dataset.mode; document.querySelectorAll("[data-action='timer-mode']").forEach(b => b.classList.toggle("on", b.dataset.mode === el.dataset.mode)); updateTimer(); break;
+    case "timer-pause": if (ui.session && ui.session.paused) resumeTimer(); else pauseTimer(); break;
+    case "timer-reset": resetTimer(); break;
     case "toggle-consigne": { const cr = $("#consigneRef"); if (cr) cr.style.display = cr.style.display === "none" ? "" : "none"; break; }
     case "session-finish": finishWriting(); break;
     case "session-save": saveSession(); break;
