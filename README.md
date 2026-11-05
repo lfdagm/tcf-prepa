@@ -14,6 +14,12 @@ So I use the topics from those websites and answer them on my own platform. Chat
 
 I also wanted it to be usable by as many people as possible, so accessibility is part of the goal ([see below](#accessibility-an-ongoing-attempt)).
 
+## Content and copyright
+
+The practice topics come from TCF preparation platforms that I use with my own access. **They are not included in this repository or on the website.** When I practise, I paste a topic into the app and it stays in my own private data (my browser and my password-protected sync), out of the public code.
+
+This repository only contains the app itself, demo examples I wrote, and my own study sheets (model structures, connectors, useful expressions and verb tenses). The oral Task 1 sheet is a generic template; my personal version stays private. I designed it this way to respect those platforms' copyright.
+
 ## How it works
 
 1. **Practise under exam conditions.** Paste a topic, pick the task, and write or speak against the clock. A word counter shows if I'm inside the required range, and spell check is off, like in the real exam.
