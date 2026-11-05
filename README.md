@@ -12,6 +12,8 @@ Preparation websites for the TCF have good topics, but they limit how many attem
 
 So I use the topics from those websites and answer them on my own platform. ChatGPT corrects my answers, and the app keeps track of every attempt, every correction and every recurring mistake, so I can study from my own errors instead of starting from zero each time.
 
+I also wanted it to be usable by as many people as possible, so accessibility is part of the goal ([see below](#accessibility-an-ongoing-attempt)).
+
 ## How it works
 
 1. **Practise under exam conditions.** Paste a topic, pick the task, and write or speak against the clock. A word counter shows if I'm inside the required range, and spell check is off, like in the real exam.
@@ -54,6 +56,31 @@ The trade-off is that corrections aren't instant or automatic, which also makes 
 - Reference sheets: model answers, templates, useful expressions, connectors and verb tenses
 - Integrated vocabulary and conjugation practice ([tcf-vocab-practice](https://github.com/lfdagm/tcf-vocab-practice))
 - Filters by month, task and full-text search; JSON export
+
+## Accessibility: an ongoing attempt
+
+Accessibility is one of the reasons I build my own tools. I treat this as **an attempt, not a claim of full compliance**: what's in place, how I checked it, and what's still missing.
+
+**In place**
+- **Keyboard:** everything works with Tab and Enter, in a logical order, with a visible focus ring.
+- **Screen readers:**
+  - the page is declared in French, so it's pronounced correctly;
+  - the navigation is named, and the active section is announced;
+  - each section has a heading, so the headings go in order;
+  - filters have labels;
+  - decorative emoji are hidden;
+  - confirmations like "Copié ✔" are read aloud.
+- **Contrast:** text meets WCAG 2.1 AA (at least 4.5:1) in both light and dark mode.
+- **Comfort:** follows the system's dark mode and respects "reduce motion".
+- **One deliberate trade-off:** spell check is turned off in the writing area only, to mirror real exam conditions.
+
+**How I checked it:** an automated [axe-core](https://github.com/dequelabs/axe-core) audit (WCAG 2.1 A/AA plus best practices) on every section in light and dark mode found **0 violations** (November 2026). I also tested keyboard navigation by hand.
+
+**Still to do**
+- Testing with people who use screen readers daily (VoiceOver, NVDA); automated tools only catch part of the issues.
+- Announcing the timer at key moments (for example, 1 minute left) without being noisy.
+- Auditing the embedded vocabulary practice page separately.
+- Checking layouts at 200% zoom.
 
 ## Tech
 

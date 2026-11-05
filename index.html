@@ -17,7 +17,7 @@
     --border-strong: #ced2dd;
     --text: #1a1d29;
     --text-muted: #555b6b;
-    --text-soft: #767d8e;
+    --text-soft: #646b7b; /* ≥4.5:1 contrast on all light surfaces (WCAG AA) */
     --primary: #4f46e5;
     --primary-strong: #4338ca;
     --primary-soft: #eef2ff;
@@ -59,7 +59,7 @@
       --border-strong: #353b51;
       --text: #ecedf3;
       --text-muted: #a4abc0;
-      --text-soft: #7e8499;
+      --text-soft: #959bae; /* ≥4.5:1 on dark surfaces (WCAG AA) */
       --primary: #818cf8;
       --primary-strong: #a5b4fc;
       --primary-soft: #1e2148;
@@ -100,6 +100,7 @@
   .app-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .gear { font-size: 1.3rem; line-height: 1; flex: 0 0 auto; padding: 8px 12px; }
   h1 { font-size: 1.5rem; margin: 0 0 2px; letter-spacing: -.02em; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .subtitle { color: var(--text-soft); font-size: .9rem; margin: 0 0 16px; }
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); padding: 6px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
   .tab { flex: 1; min-width: 90px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; font-size: .92rem; padding: 9px 10px; border-radius: var(--radius-md); cursor: pointer; transition: var(--t); display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -119,6 +120,7 @@
   button.btn:focus-visible, .tab:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; box-shadow: var(--ring); }
   button.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
   button.btn.primary:hover { background: var(--primary-strong); }
+  @media (prefers-color-scheme: dark) { button.btn.primary { color: #0d1018; } } /* dark text on light indigo: 6.4:1 */
   button.btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
   button.btn.ghost:hover { background: var(--surface-3); color: var(--text); }
   button.btn.danger { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }
@@ -255,7 +257,7 @@
   .bilan-bar { flex: 1; height: 12px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
   .bilan-bar span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
   .bilan-n { flex: 0 0 auto; font-weight: 700; font-size: .9rem; min-width: 22px; text-align: right; }
-  .bilan-click { width: 100%; border: none; background: transparent; font: inherit; cursor: pointer; padding: 0; }
+  .bilan-click { width: 100%; border: none; background: transparent; font: inherit; color: inherit; cursor: pointer; padding: 0; }
   .bilan-click:hover .bilan-label { color: var(--accent); }
   .bilan-click:hover .bilan-bar span { background: var(--accent-strong); }
   .modele-frame { width: 100%; height: 72vh; border: 1px solid var(--border); border-radius: var(--radius-md); margin-top: 12px; background: #fff; }
@@ -273,21 +275,21 @@
         <h1>Journal de préparation TCF</h1>
         <p class="subtitle">Écrit · orale · vocabulaire · mes corrections, cartes et modèles</p>
       </div>
-      <button class="btn ghost gear" data-action="open-donnees" title="Données & synchronisation" aria-label="Données et synchronisation">⚙</button>
+      <button class="btn ghost gear" data-action="open-donnees" title="Données & synchronisation" aria-label="Données et synchronisation"><span aria-hidden="true">⚙</span></button>
     </div>
-    <nav class="tabs" id="tabs">
-      <button class="tab" data-tab="sentrainer">✍️ S'entraîner</button>
-      <button class="tab" data-tab="textes">📝 Écrit</button>
-      <button class="tab" data-tab="oral">🎤 Orale</button>
-      <button class="tab" data-tab="cartes">🃏 Cartes</button>
-      <button class="tab" data-tab="modeles">📚 Modèles</button>
-      <button class="tab" data-tab="vocab">🔤 Vocabulaire</button>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button class="tab" data-tab="sentrainer"><span aria-hidden="true">✍️</span> S'entraîner</button>
+      <button class="tab" data-tab="textes"><span aria-hidden="true">📝</span> Écrit</button>
+      <button class="tab" data-tab="oral"><span aria-hidden="true">🎤</span> Orale</button>
+      <button class="tab" data-tab="cartes"><span aria-hidden="true">🃏</span> Cartes</button>
+      <button class="tab" data-tab="modeles"><span aria-hidden="true">📚</span> Modèles</button>
+      <button class="tab" data-tab="vocab"><span aria-hidden="true">🔤</span> Vocabulaire</button>
     </nav>
   </header>
   <main id="app"></main>
 </div>
 <div id="modalRoot"></div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* ============================================================
@@ -595,7 +597,11 @@ function stdEditor() { return ui.session && ui.session.standalone && ui.session.
 const app = () => $("#app");
 
 function render() {
-  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === ui.tab));
+  document.querySelectorAll(".tab").forEach(b => {
+    const on = b.dataset.tab === ui.tab;
+    b.classList.toggle("active", on);
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
   updateDueBadge();
   const anyWriting = ui.tab === "sentrainer" && ui.session && ui.session.phase === "write";
   document.body.classList.toggle("writing", anyWriting && ui.session.mode !== "oral");
@@ -607,6 +613,14 @@ function render() {
   else if (ui.tab === "modeles") renderModeles();
   else if (ui.tab === "vocab") renderVocab();
   else renderDonnees();
+  addSectionHeading();
+}
+
+// Titre de section invisible (lecteurs d'écran) : garde la hiérarchie h1 → h2 → h3.
+const SECTION_TITLES = { sentrainer: "S'entraîner", textes: "Écrit", oral: "Orale", cartes: "Cartes", modeles: "Modèles", vocab: "Vocabulaire" };
+function addSectionHeading() {
+  const title = ui.tab === "cartes" && ui.showBilan ? "Bilan" : (SECTION_TITLES[ui.tab] || "Données");
+  if (!app().querySelector(":scope > h2.sr-only")) app().insertAdjacentHTML("afterbegin", `<h2 class="sr-only">${title}</h2>`);
 }
 
 /* ---------- Onglet S'entraîner (écriture + timer) ---------- */
@@ -910,8 +924,8 @@ function renderTextes() {
 
   let html = `
     <div class="row filters">
-      <select id="monthSel" style="flex:1;min-width:190px">${monthOpts}</select>
-      <select id="tFilter">
+      <select id="monthSel" aria-label="Filtrer par période" style="flex:1;min-width:190px">${monthOpts}</select>
+      <select id="tFilter" aria-label="Filtrer par tâche">
         <option value="all"${ui.tFilter === "all" ? " selected" : ""}>Toutes les tâches</option>
         <option value="1"${ui.tFilter === "1" ? " selected" : ""}>Tâche 1</option>
         <option value="2"${ui.tFilter === "2" ? " selected" : ""}>Tâche 2</option>
@@ -1016,8 +1030,8 @@ function renderOral() {
 
   let html = `
     <div class="row filters">
-      <select id="oMonthSel" style="flex:1;min-width:180px">${monthOpts}</select>
-      <select id="oTFilter">
+      <select id="oMonthSel" aria-label="Filtrer par période" style="flex:1;min-width:180px">${monthOpts}</select>
+      <select id="oTFilter" aria-label="Filtrer par tâche">
         <option value="all"${ui.tFilter === "all" ? " selected" : ""}>Toutes les tâches</option>
         <option value="1"${ui.tFilter === "1" ? " selected" : ""}>Tâche 1</option>
         <option value="2"${ui.tFilter === "2" ? " selected" : ""}>Tâche 2</option>
