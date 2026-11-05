@@ -260,7 +260,6 @@
   .bilan-click { width: 100%; border: none; background: transparent; font: inherit; color: inherit; cursor: pointer; padding: 0; }
   .bilan-click:hover .bilan-label { color: var(--accent); }
   .bilan-click:hover .bilan-bar span { background: var(--accent-strong); }
-  .modele-frame { width: 100%; height: 72vh; border: 1px solid var(--border); border-radius: var(--radius-md); margin-top: 12px; background: #fff; }
   .embed-frame { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); margin-top: 10px; background: #fff; display: block; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: .9rem; font-weight: 600; box-shadow: var(--shadow-lg); z-index: 100; opacity: 0; transition: opacity var(--t); pointer-events: none; }
   .toast.show { opacity: 1; }
@@ -273,7 +272,7 @@
     <div class="app-head">
       <div>
         <h1>Journal de préparation TCF</h1>
-        <p class="subtitle">Écrit · orale · vocabulaire · mes corrections, cartes et modèles</p>
+        <p class="subtitle">Écrit · orale · vocabulaire · mes corrections et cartes</p>
       </div>
       <button class="btn ghost gear" data-action="open-donnees" title="Données & synchronisation" aria-label="Données et synchronisation"><span aria-hidden="true">⚙</span></button>
     </div>
@@ -282,7 +281,6 @@
       <button class="tab" data-tab="textes"><span aria-hidden="true">📝</span> Écrit</button>
       <button class="tab" data-tab="oral"><span aria-hidden="true">🎤</span> Orale</button>
       <button class="tab" data-tab="cartes"><span aria-hidden="true">🃏</span> Cartes</button>
-      <button class="tab" data-tab="modeles"><span aria-hidden="true">📚</span> Modèles</button>
       <button class="tab" data-tab="vocab"><span aria-hidden="true">🔤</span> Vocabulaire</button>
     </nav>
   </header>
@@ -550,16 +548,6 @@ function updateDueBadge() { const b = $("#dueBadge"); if (b) b.textContent = due
    État de l'interface
    ============================================================ */
 let ui = { tab: "sentrainer", tFilter: "all", cType: "all", search: "", cIdx: 0, review: null, flipped: false, session: null, periodY: curYear(), periodM: curMonth(), combIdx: 0, oPeriodY: curYear(), oPeriodM: curMonth(), oPartIdx: 0, allTextes: false, allOraux: false, modeleOpen: null, showBilan: false };
-const MODELES = [
-  { f: "TCF_Tache3_Modele.html", titre: "Expression écrite — Tâche 3", cat: "Écrit", icon: "📝" },
-  { f: "TCF_Oral_Tache1.html", titre: "Expression orale — Tâche 1", cat: "Oral", icon: "🎤" },
-  { f: "TCF_Oral_Tache2.html", titre: "Expression orale — Tâche 2", cat: "Oral", icon: "🎤" },
-  { f: "TCF_Oral_Tache2_Expressions.html", titre: "Expression orale — Tâche 2 · Expressions utiles", cat: "Oral", icon: "🗂️" },
-  { f: "TCF_Oral_Tache2_Connecteurs.html", titre: "Expression orale — Tâche 2 · Connecteurs", cat: "Oral", icon: "🔗" },
-  { f: "TCF_Oral_Tache3.html", titre: "Expression orale — Tâche 3", cat: "Oral", icon: "🎤" },
-  { f: "TCF_Oral_Tache3_Canevas.html", titre: "Expression orale — Tâche 3 · Canevas", cat: "Oral", icon: "🧩" },
-  { f: "TCF_Temps_Verbaux.html", titre: "Temps verbaux", cat: "Référence", icon: "📖" }
-];
 const VOCAB_URL = "https://tcf-vocab-practice.vercel.app";
 const DUREE_DEFAUT = { 1: 15, 2: 20, 3: 25 };   // écrit : minutes indicatives par tâche (≈ 60 min au total)
 const DUREE_ORAL = { 1: 2, 2: 6, 3: 7 };          // oral : minutes indicatives par tâche
@@ -610,14 +598,13 @@ function render() {
   else if (ui.tab === "textes") { if (stdEditor()) renderEditor(); else renderTextes(); }
   else if (ui.tab === "oral") { if (stdEditor()) renderEditor(); else renderOral(); }
   else if (ui.tab === "cartes") { if (ui.showBilan) renderBilan(); else renderCartes(); }
-  else if (ui.tab === "modeles") renderModeles();
   else if (ui.tab === "vocab") renderVocab();
   else renderDonnees();
   addSectionHeading();
 }
 
 // Titre de section invisible (lecteurs d'écran) : garde la hiérarchie h1 → h2 → h3.
-const SECTION_TITLES = { sentrainer: "S'entraîner", textes: "Écrit", oral: "Orale", cartes: "Cartes", modeles: "Modèles", vocab: "Vocabulaire" };
+const SECTION_TITLES = { sentrainer: "S'entraîner", textes: "Écrit", oral: "Orale", cartes: "Cartes", vocab: "Vocabulaire" };
 function addSectionHeading() {
   const title = ui.tab === "cartes" && ui.showBilan ? "Bilan" : (SECTION_TITLES[ui.tab] || "Données");
   if (!app().querySelector(":scope > h2.sr-only")) app().insertAdjacentHTML("afterbegin", `<h2 class="sr-only">${title}</h2>`);
@@ -1091,31 +1078,6 @@ function renderOral() {
   if (ms) ms.addEventListener("change", e => { if (e.target.value === "all") { ui.allOraux = true; } else { const [y, m] = e.target.value.split("-").map(Number); ui.allOraux = false; ui.oPeriodY = y; ui.oPeriodM = m; ui.oPartIdx = 0; } renderOral(); });
 }
 
-/* ---------- Onglet Modèles ---------- */
-function renderModeles() {
-  const cats = ["Écrit", "Oral", "Référence"];
-  let html = `<p class="muted" style="margin-top:14px">Tes modèles et références, centralisés. Ouvre-les pour t'en inspirer avant de t'entraîner.</p>`;
-  for (const cat of cats) {
-    const items = MODELES.filter(m => m.cat === cat);
-    if (!items.length) continue;
-    html += `<h3 style="margin:20px 2px 2px">${cat}</h3>`;
-    for (const m of items) {
-      const open = ui.modeleOpen === m.f;
-      html += `
-      <div class="card" style="margin-top:10px">
-        <div class="row" style="align-items:center;gap:12px">
-          <span style="font-size:1.7rem">${m.icon}</span>
-          <div style="min-width:0"><b>${esc(m.titre)}</b><div class="muted" style="font-size:.78rem">${esc(m.f)}</div></div>
-          <div class="spacer"></div>
-          <button class="btn sm" data-action="modele-toggle" data-f="${esc(m.f)}">${open ? "Masquer" : "👁 Aperçu"}</button>
-          <button class="btn sm" data-action="modele-open" data-f="${esc(m.f)}">Ouvrir ↗</button>
-        </div>
-        ${open ? `<iframe class="modele-frame" src="modeles/${encodeURIComponent(m.f)}" title="${esc(m.titre)}"></iframe>` : ""}
-      </div>`;
-    }
-  }
-  app().innerHTML = html;
-}
 
 /* ---------- Onglet Vocabulaire (projet tcf-vocab-practice intégré) ---------- */
 function sizeVocab() {
@@ -1735,8 +1697,6 @@ document.body.addEventListener("click", e => {
     case "carte-next": carteNav(1); break;
     case "cart-cat": ui.cType = el.dataset.cat; ui.cIdx = 0; renderCartes(); break;
     case "carte-source": sourceModal(id); break;
-    case "modele-toggle": ui.modeleOpen = ui.modeleOpen === el.dataset.f ? null : el.dataset.f; renderModeles(); break;
-    case "modele-open": window.open("modeles/" + encodeURIComponent(el.dataset.f), "_blank", "noopener"); break;
     case "vocab-open": window.open(VOCAB_URL, "_blank", "noopener"); break;
     case "open-donnees": ui.showBilan = false; ui.tab = "donnees"; render(); break;
     case "cartes-bilan": ui.showBilan = true; render(); break;

@@ -18,7 +18,7 @@ I also wanted it to be usable by as many people as possible, so accessibility is
 
 The practice topics come from TCF preparation platforms that I use with my own access. **They are not included in this repository or on the website.** When I practise, I paste a topic into the app and it stays in my own private data (my browser and my password-protected sync), out of the public code.
 
-This repository only contains the app itself, demo examples I wrote, and my own study sheets (model structures, connectors, useful expressions and verb tenses). The oral Task 1 sheet is a generic template; my personal version stays private. I designed it this way to respect those platforms' copyright.
+This repository only contains the app itself and demo examples I wrote. My personal study sheets (model answers, connectors, expressions, verb tenses) are kept private. The themes of the integrated vocabulary practice are based on a public article, credited in [Sources](#sources). I designed it this way to respect those platforms' copyright.
 
 ## How it works
 
@@ -48,9 +48,9 @@ The trade-off is that corrections aren't instant or automatic, which also makes 
 |---|---|
 | ![Flashcard generated from a correction](docs/screenshots/cartes.jpg) | ![Summary of themes and tags](docs/screenshots/bilan.jpg) |
 
-| Models and templates | Vocabulary practice |
-|---|---|
-| ![Model answers and templates by task](docs/screenshots/modeles.jpg) | ![Integrated vocabulary flashcards](docs/screenshots/vocab.jpg) |
+| Vocabulary practice |
+|---|
+| ![Integrated vocabulary flashcards](docs/screenshots/vocab.jpg) |
 
 ## Features
 
@@ -59,7 +59,6 @@ The trade-off is that corrections aren't instant or automatic, which also makes 
 - Side-by-side comparison: my version, the corrected version and a model answer, with highlighted changes
 - Estimated score out of 20 and CEFR level per attempt, plus an average over time
 - Flashcards generated from corrections, filterable by category and tag, with a link back to the original text
-- Reference sheets: model answers, templates, useful expressions, connectors and verb tenses
 - Integrated vocabulary and conjugation practice ([tcf-vocab-practice](https://github.com/lfdagm/tcf-vocab-practice))
 - Filters by month, task and full-text search; JSON export
 
@@ -87,6 +86,11 @@ Accessibility is one of the reasons I build my own tools. I treat this as **an a
 - Announcing the timer at key moments (for example, 1 minute left) without being noisy.
 - Auditing the embedded vocabulary practice page separately.
 - Checking layouts at 200% zoom.
+
+## Sources
+
+- TCF Canada Formation, *Vocabulaire essentiel TCF Canada : thématiques incontournables*. https://www.tcf-canada-formation.com/blog/vocabulaire-essentiel-tcf-canada-thematiques-incontournables. Basis for the themes of the vocabulary practice.
+- Practice topics come from TCF preparation platforms I have access to; they are not reproduced here (see [Content and copyright](#content-and-copyright)).
 
 ## Tech
 
